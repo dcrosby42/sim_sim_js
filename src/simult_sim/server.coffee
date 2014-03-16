@@ -5,7 +5,7 @@ class Server
     @turnManager.on 'TurnEnded', (currentTurn) ->
       @_broadcast m.turnComplete(currentTurn)
 
-    @adapter.on 'PeerConnected', (id) ->
+    @adapter.on 'Network::PeerConnected', (id) ->
       @_send id, m.idAssigned(id)
       stateProviderId = @_selectOtherPlayer(id)
       if stateProviderId == id
@@ -16,10 +16,10 @@ class Server
       @_send stateProviderId, m.gamestateRequest(id)
       @_broadcast m.playerJoined(id)
 
-    @adapter.on 'PeerDisconnected', (id) ->
+    @adapter.on 'Network::PeerDisconnected', (id) ->
       @_broadcast m.playerLeft(id)
 
-    @adapter.on 'PeerPacket', (id, data) ->
+    @adapter.on 'Network::PeerPacket', (id, data) ->
       msg = @_unpackClientMessage(data)
       switch msg
         when 'ClientMsg::Event'

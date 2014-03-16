@@ -1,4 +1,5 @@
 EventEmitter = require('events').EventEmitter
+Timer = require './timer'
 
 class TurnManager extends EventEmitter
   constructor: (@period) ->

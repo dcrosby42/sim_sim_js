@@ -31,13 +31,13 @@ class SocketIOServerAdapter extends EventEmitter
       @_storeClient id, socket
 
       socket.on 'data', (data) ->
-        @emit 'PeerPacket', id, data
+        @emit 'Network::PeerPacket', id, data
 
       socket.on 'disconnect', ->
         @_removeClient id
-        @emit 'PeerDisconnected', id
+        @emit 'Network::PeerDisconnected', id
 
-      @emit 'PeerConnected', id
+      @emit 'Network::PeerConnected', id
 
   _storeClient: (id,socket) ->
     @_clients[id] = socket
