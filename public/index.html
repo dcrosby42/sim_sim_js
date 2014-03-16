@@ -1,0 +1,15 @@
+<html>
+<head>
+  <title>SimSimJS Test</title>
+</head>
+<body>
+  <h1>SimSimJS Test</h1>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  var socket = io.connect('http://localhost:4050');
+  socket.on('data', function (data) {
+    console.log("DATA", data);
+  });
+</script>
+</body>
+</html>

@@ -1,13 +1,17 @@
 
 class Server
   constructor: (@adapter, @turnManager, @serverMessageFactory) ->
+    @logfmt = require('logfmt')
+
     m = @serverMessageFactory
-    @turnManager.on 'TurnEnded', (currentTurn) ->
+    @turnManager.on 'TurnEnded', (currentTurn) =>
       @_broadcast m.turnComplete(currentTurn)
 
-    @adapter.on 'Network::PeerConnected', (id) ->
+    @adapter.on 'Network::PeerConnected', (id) =>
       @_send id, m.idAssigned(id)
       stateProviderId = @_selectOtherPlayer(id)
+      @logfmt.log {selectedOtherPlayer: stateProviderId}
+      
       if stateProviderId == id
         # hacksie: id == stateProviderId implies we're the first player.
         # Start the turn manager
@@ -16,10 +20,10 @@ class Server
       @_send stateProviderId, m.gamestateRequest(id)
       @_broadcast m.playerJoined(id)
 
-    @adapter.on 'Network::PeerDisconnected', (id) ->
+    @adapter.on 'Network::PeerDisconnected', (id) =>
       @_broadcast m.playerLeft(id)
 
-    @adapter.on 'Network::PeerPacket', (id, data) ->
+    @adapter.on 'Network::PeerPacket', (id, data) =>
       msg = @_unpackClientMessage(data)
       switch msg
         when 'ClientMsg::Event'
@@ -43,7 +47,13 @@ class Server
     msg
 
   _selectOtherPlayer: (id) ->
-    return id if @adapter.clientCount == 1
+    @logfmt.log
+      id:id
+      clientCount: @adapter.clientCount()
+      clientIds_0: @adapter.clientIds[0]
+      clientIds_1: @adapter.clientIds[1]
+
+    return id if @adapter.clientCount() == 1
     if @adapter.clientIds[0] != id
       return @adapter.clientIds[0]
     else

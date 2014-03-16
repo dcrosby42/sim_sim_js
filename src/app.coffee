@@ -1,5 +1,6 @@
 port       = 4050
 verbose    = true
+appRoot = "#{__dirname}/.."
 
 logfmt     = require('logfmt')
 express    = require('express')
@@ -11,7 +12,7 @@ simultSim  = require('./simult_sim')
 simultSimServer = simultSim.create.socketIOServer(socketIO: socketIO)
 
 expressApp.use logfmt.requestLogger()
-expressApp.use express.static("#{__dirname}/public")
+expressApp.use express.static("#{appRoot}/public")
 
 logfmt.log port: port
 httpServer.listen port

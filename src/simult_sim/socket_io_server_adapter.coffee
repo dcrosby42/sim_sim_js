@@ -26,28 +26,31 @@ class SocketIOServerAdapter extends EventEmitter
     @socketIO.sockets.emit 'data', data
 
   _setupConnHandlers: ->
-    @socketIO.sockets.on 'connection', (socket) ->
+    @socketIO.sockets.on 'connection', (socket) =>
       id = socket.id
       @_storeClient id, socket
 
-      socket.on 'data', (data) ->
+      socket.on 'data', (data) =>
         @emit 'Network::PeerPacket', id, data
 
-      socket.on 'disconnect', ->
+      socket.on 'disconnect', =>
         @_removeClient id
         @emit 'Network::PeerDisconnected', id
 
       @emit 'Network::PeerConnected', id
 
   _storeClient: (id,socket) ->
+    console.log "_storeClient: #{id}"
     @_clients[id] = socket
+    console.log @_clients
     @_refreshClientIds()
+    console.log @clientIds
 
   _removeClient: (id) ->
     delete @_clients[id]
     @_refreshClientIds()
 
   _refreshClientIds: ->
-    @clientIds = (id for id,socket in @_clients)
+    @clientIds = (id for id,socket of @_clients)
 
 module.exports = SocketIOServerAdapter
