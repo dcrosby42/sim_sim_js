@@ -40,11 +40,8 @@ class SocketIOServerAdapter extends EventEmitter
       @emit 'Network::PeerConnected', id
 
   _storeClient: (id,socket) ->
-    console.log "_storeClient: #{id}"
     @_clients[id] = socket
-    console.log @_clients
     @_refreshClientIds()
-    console.log @clientIds
 
   _removeClient: (id) ->
     delete @_clients[id]

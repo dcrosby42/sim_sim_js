@@ -47,11 +47,11 @@ class Server
     msg
 
   _selectOtherPlayer: (id) ->
-    @logfmt.log
-      id:id
-      clientCount: @adapter.clientCount()
-      clientIds_0: @adapter.clientIds[0]
-      clientIds_1: @adapter.clientIds[1]
+    # @logfmt.log
+    #   id:id
+    #   clientCount: @adapter.clientCount()
+    #   clientIds_0: @adapter.clientIds[0]
+    #   clientIds_1: @adapter.clientIds[1]
 
     return id if @adapter.clientCount() == 1
     if @adapter.clientIds[0] != id
