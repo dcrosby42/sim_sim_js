@@ -4,12 +4,11 @@
 </head>
 <body>
   <h1>SimSimJS Test</h1>
+
 <script src="/socket.io/socket.io.js"></script>
-<script>
-  var socket = io.connect('http://localhost:4050');
-  socket.on('data', function (data) {
-    console.log("DATA", data);
-  });
-</script>
+<script src="js/simult_sim/simult_sim.js"></script>
+<script src="js/simult_sim/event_emitter.js"></script>
+<script src="js/simult_sim/socket_io_client_adapter.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>
