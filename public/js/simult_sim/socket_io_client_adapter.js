@@ -24,6 +24,10 @@
       return this.socket.emit('data', data);
     };
 
+    SocketIOClientAdapter.prototype.disconnect = function() {
+      return this.socket.disconnect();
+    };
+
     return SocketIOClientAdapter;
 
   })(SimultSim.EventEmitter);

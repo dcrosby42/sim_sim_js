@@ -1,9 +1,10 @@
-class Client extends EventEmitter
-  constructor: (@adapter,@gameEventFactory) ->
+class Client extends SimultSim.EventEmitter
+  constructor: (@adapter,@gameEventFactory, @clientMessageFactory) ->
     @gameStarted = false
     @clientId = null
-    @gameEventsBuffer = []
     @simulationEventsBuffer = []
+    @gameEventsBuffer = []
+    @preGameEventsBuffer = []
 
     @adapter.on 'ClientAdapter::Disconnect', =>
       @gameEventsBuffer.push @gameEventFactory.disconnect()
@@ -13,24 +14,84 @@ class Client extends EventEmitter
       switch msg.type
         when 'ServerMsg::IdAssigned'
           @clientId = msg.ourId
+
         when 'ServerMsg::Event'
           @simulationEventsBuffer.push @simulationEventFactory.event(msg.sourcePlayerId, msg.data)
+
         when 'ServerMsg::PlayerJoined'
           @simulationEventsBuffer.push @simulationEventFactory.playerJoined(msg.playerId)
+
         when 'ServerMsg::PlayerLeft'
           @simulationEventsBuffer.push @simulationEventFactory.playerLeft(msg.playerId)
+
         when 'ServerMsg::TurnComplete'
-          console.log "TODO MOAR"
-          #TODO MOAR
+          turnEvents = []
+          for i in [1..@simulationEventsBuffer.length]
+            turnEvents.push @simulationEventsBuffer.shift()
+           
+          f = (checksum) ->
+            @_sendMessage @clientMessageFactory.turnFinished(
+              msg.turnNumber,
+              checksum
+            )
+          @gameEventsBuffer.push @gameEventFactory.turnComplete(
+            msg.turnNumber,
+            turnEvents,
+            f
+          )
+
+        when 'ServerMsg::StartGame'
+          @gameStarted = true
+          for simEvent in @_unpackProtoTurn(msg.protoTurn)
+            @simulationEventsBuffer.push simEvent
+          # @emit 'GameEvent::StartGame', msg.yourId, msg.turnPeriod, msg.currentTurn, msg.gamestate
+          @preGameEventsBuffer.push @gameEventFactory.startGame(msg.yourId, msg.turnPeriod, msg.currentTurn, msg.gamestate)
+
+        when 'ServerMsg::GamestateRequest'
+          protoTurn = @_packProtoTurn(@simulationEventsBuffer)
+          f = (gamestate) ->
+            @_sendMessage @clientMessageFactory.gamestate(
+              msg.forPlayerId,
+              protoTurn,
+              gamestate
+            )
+          gameEvent = @gameEventFactory.gamestateRequest(f)
+          if @gameStarted
+            @gameEventsBuffer.push gameEvent
+          else
+            @preGameEventsBuffer.push gameEvent
 
 
 
 
+  update: (callback) ->
+    for i in [1..@preGameEventsBuffer.length]
+      callback @preGameEventsBuffer.shift()
+    if @gameStarted
+      for i in [1..@gameEventsBuffer.length]
+        callback @gameEventsBuffer.shift()
 
-  update: ->
+  sendEvent: (data) ->
+    @_sendMessage @clientMessageFactory.event(data)
+  
+  disconnect: ->
+    @adapter.disconnect()
 
   _unpackServerMessage: (data) ->
     data
+
+  _packClientMessage: (msg) ->
+    msg
+
+  _packProtoTurn: (events) ->
+    events
+
+  _unpackProtoTurn: (protoTurn) ->
+    protoTurn
+
+  _sendMessage: (msg) ->
+    @adapter.send @_packClientMessage(msg)
+
 
 window.SimultSim.Client = Client
 

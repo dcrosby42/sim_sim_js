@@ -31,7 +31,8 @@ class Server
         when 'ClientMsg::Gamestate'
           @_send msg.forPlayerId, m.startGame(msg.forPlayerId, @turnManager.period, @turnManager.current, msg.protoTurn, msg.data)
 
-        #when 'ClientMsg::TurnFinished'
+        when 'ClientMsg::TurnFinished'
+          _ = null
           # TODO: do something toward checksu verification here
 
   _send: (id, msg) ->
@@ -47,13 +48,8 @@ class Server
     msg
 
   _selectOtherPlayer: (id) ->
-    # @logfmt.log
-    #   id:id
-    #   clientCount: @adapter.clientCount()
-    #   clientIds_0: @adapter.clientIds[0]
-    #   clientIds_1: @adapter.clientIds[1]
+    return id if @adapter.clientCount() == 1 # There's only one player
 
-    return id if @adapter.clientCount() == 1
     if @adapter.clientIds[0] != id
       return @adapter.clientIds[0]
     else

@@ -9,4 +9,7 @@ class SocketIOClientAdapter extends SimultSim.EventEmitter
   send: (data) ->
     @socket.emit 'data', data
 
+  disconnect: ->
+    @socket.disconnect()
+
 window.SimultSim.SocketIOClientAdapter = SocketIOClientAdapter
