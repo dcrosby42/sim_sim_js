@@ -7,10 +7,10 @@ class GameEventFactory
   gamestateRequest: (f) ->
     {
       type: 'GameEvent::GamestateRequest'
-      gamestate_closure: f
+      gamestateClosure: f
     }
 
-  startGame: ->
+  startGame: (ourId, turnPeriod, currentTurn, gamestate) ->
     {
       type: 'GameEvent::StartGame'
       ourId: ourId
@@ -24,5 +24,7 @@ class GameEventFactory
       type: 'GameEvent::TurnComplete'
       turnNumber: turnNumber 
       events: events
-      checkusmClosure: checksumClosure
+      checksumClosure: checksumClosure
     }
+
+module.exports = GameEventFactory
