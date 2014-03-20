@@ -30,24 +30,16 @@ module.exports = (grunt) ->
         options:
           stdout: true
 
-      # jasmine:
-      #   command: "node_modules/jasmine-node/bin/jasmine-node --noStack --coffee spec/"
-      #   options:
-      #     stdout: true
+      jasmine:
+        command: "node_modules/jasmine-node/bin/jasmine-node --noStack --coffee spec/"
+        options:
+          stdout: true
+          failOnError: true
 
-      # jasmine_watch:
-      #   command: "node_modules/jasmine-node/bin/jasmine-node --autotest --watch . --noStack --coffee spec/"
-      #   options:
-      #     stdout: true
-
-    # https://github.com/jasmine-contrib/grunt-jasmine-node
-    # jasmine_node:
-    #   specFolders: ["./spec"]
-    #   specNameMatcher: ["./spec"]
-    #   projectRoot: "."
-    #   requirejs: false
-    #   forceExit: true
-    #   useCoffee: true
+      jasmine_watch:
+        command: "node_modules/jasmine-node/bin/jasmine-node --autotest --watch . --noStack --coffee spec/"
+        options:
+          stdout: true
 
   grunt.loadNpmTasks 'grunt-contrib-coffee'
   grunt.loadNpmTasks 'grunt-contrib-watch'
@@ -57,8 +49,8 @@ module.exports = (grunt) ->
   grunt.registerTask 'default', ['coffee:client']
   
   grunt.registerTask 'server', 'shell:server'
-  # grunt.registerTask 'test', 'shell:jasmine'
-  # grunt.registerTask 'wtest', 'shell:jasmine_watch'
+  grunt.registerTask 'test', 'shell:jasmine'
+  grunt.registerTask 'wtest', 'shell:jasmine_watch'
 
     # uglify:
     #   options:
