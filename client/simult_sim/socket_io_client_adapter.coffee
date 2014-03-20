@@ -1,5 +1,6 @@
+EventEmitter = require './event_emitter.coffee'
 
-class SocketIOClientAdapter extends SimultSim.EventEmitter
+class SocketIOClientAdapter extends EventEmitter
   constructor: (@socket) ->
     @socket.on 'data', (data) =>
       @emit 'ClientAdapter::Packet', data
@@ -12,4 +13,4 @@ class SocketIOClientAdapter extends SimultSim.EventEmitter
   disconnect: ->
     @socket.disconnect()
 
-window.SimultSim.SocketIOClientAdapter = SocketIOClientAdapter
+module.exports = SocketIOClientAdapter

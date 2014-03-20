@@ -19,8 +19,3 @@ class ClientMessageFactory
       type: 'ClientMsg::Event'
       data: data
     }
-
-
-
-window.SimultSim.ClientMessageFactory = ClientMessageFactory
-

@@ -1,4 +1,6 @@
-class Client extends SimultSim.EventEmitter
+EventEmitter = require './event_emitter'
+
+class Client extends EventEmitter
   constructor: (@adapter,@gameEventFactory, @clientMessageFactory) ->
     @gameStarted = false
     @clientId = null
@@ -91,7 +93,3 @@ class Client extends SimultSim.EventEmitter
 
   _sendMessage: (msg) ->
     @adapter.send @_packClientMessage(msg)
-
-
-window.SimultSim.Client = Client
-

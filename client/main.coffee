@@ -1,6 +1,8 @@
 
 socket = io.connect(location.toString())
-adapter = new SimultSim.SocketIOClientAdapter(socket)
+
+SocketIOClientAdapter = require './simult_sim/socket_io_client_adapter.coffee'
+adapter = new SocketIOClientAdapter(socket)
 
 adapter.on 'ClientAdapter::Packet', (data) ->
   console.log "ClientAdapter::Packet", data

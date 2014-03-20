@@ -54,6 +54,12 @@ module.exports = (grunt) ->
         options:
           stdout: true
 
+      browserify:
+        command: "node_modules/.bin/browserify -t coffeeify client/main.coffee -o public/js/main_bundle.js"
+        options:
+          failOnError: true
+          stdout: true
+
   grunt.loadNpmTasks 'grunt-contrib-coffee'
   grunt.loadNpmTasks 'grunt-contrib-watch'
   grunt.loadNpmTasks 'grunt-jasmine-node'
