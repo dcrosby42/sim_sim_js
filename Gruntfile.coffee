@@ -55,7 +55,7 @@ module.exports = (grunt) ->
           stdout: true
 
       browserify:
-        command: "node_modules/.bin/browserify -t coffeeify client/main.coffee -o public/js/main_bundle.js"
+        command: "node_modules/.bin/browserify -t coffeeify client/main.coffee > public/js/main_bundle.js"
         options:
           failOnError: true
           stdout: true
@@ -65,13 +65,15 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-jasmine-node'
   grunt.loadNpmTasks 'grunt-shell'
 
-  grunt.registerTask 'default', ['coffee:client']
+  # grunt.registerTask 'default', ['coffee:client']
   
   grunt.registerTask 'spec', ['jasmine_node']
 
   grunt.registerTask 'server', 'shell:server'
   grunt.registerTask 'test', 'shell:jasmine'
   grunt.registerTask 'wtest', 'shell:jasmine_watch'
+
+  grunt.registerTask 'bundle', 'shell:browserify'
 
     # uglify:
     #   options:
