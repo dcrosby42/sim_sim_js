@@ -12,7 +12,8 @@
     "grunt-shell": "~0.6.4",
     "grunt-contrib-coffee": "~0.10.1",
     "grunt-contrib-watch": "~0.6.0",
-    "jasmine-node": "~1.14.2"
+    "jasmine-node": "~1.14.2",
+    "grunt-jasmine-node": "~0.2.1"
   },
   "dependencies": {
     "coffee-script": "~1.7.1",

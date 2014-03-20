@@ -23,6 +23,19 @@ module.exports = (grunt) ->
         'client/**/*.coffee'
       ]
       tasks: 'coffee:client'
+    jasmine_node:
+      options:
+        forceExit: true
+        match: '.'
+        matchall: false
+        extensions: 'coffee'
+        specNameMatcher: 'spec'
+        jUnit:
+          report: true
+          savePath : "./build/reports/jasmine/"
+          useDotNotation: true
+          consolidate: true
+      all: ['spec/']
 
     shell:
       server:
@@ -43,11 +56,13 @@ module.exports = (grunt) ->
 
   grunt.loadNpmTasks 'grunt-contrib-coffee'
   grunt.loadNpmTasks 'grunt-contrib-watch'
-  # grunt.loadNpmTasks 'grunt-jasmine-node'
+  grunt.loadNpmTasks 'grunt-jasmine-node'
   grunt.loadNpmTasks 'grunt-shell'
 
   grunt.registerTask 'default', ['coffee:client']
   
+  grunt.registerTask 'spec', ['jasmine_node']
+
   grunt.registerTask 'server', 'shell:server'
   grunt.registerTask 'test', 'shell:jasmine'
   grunt.registerTask 'wtest', 'shell:jasmine_watch'
