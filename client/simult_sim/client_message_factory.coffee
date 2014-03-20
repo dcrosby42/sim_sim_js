@@ -19,3 +19,5 @@ class ClientMessageFactory
       type: 'ClientMsg::Event'
       data: data
     }
+
+module.exports = ClientMessageFactory
