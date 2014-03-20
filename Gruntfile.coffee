@@ -55,7 +55,7 @@ module.exports = (grunt) ->
           stdout: true
 
       browserify:
-        command: "node_modules/.bin/browserify -t coffeeify client/main.coffee > public/js/main_bundle.js"
+        command: "node_modules/.bin/browserify -t coffeeify client/main.coffee > public/js/main.js"
         options:
           failOnError: true
           stdout: true
