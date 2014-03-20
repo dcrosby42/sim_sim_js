@@ -1,7 +1,7 @@
 class ClientMessageFactory
   turnFinished: (turnNumber, checksum) ->
     {
-      type: 'ClientMsg::TurnFinisher'
+      type: 'ClientMsg::TurnFinished'
       turnNumber: turnNumber
       checksum: checksum
     }

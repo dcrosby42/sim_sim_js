@@ -6,7 +6,7 @@
 
     ClientMessageFactory.prototype.turnFinished = function(turnNumber, checksum) {
       return {
-        type: 'ClientMsg::TurnFinisher',
+        type: 'ClientMsg::TurnFinished',
         turnNumber: turnNumber,
         checksum: checksum
       };
