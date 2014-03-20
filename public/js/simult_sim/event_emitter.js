@@ -31,6 +31,12 @@
 
   })();
 
-  window.SimultSim.EventEmitter = EventEmitter;
+  if (typeof window !== 'undefined') {
+    window.SimultSim.EventEmitter = EventEmitter;
+  }
+
+  if (typeof module !== 'undefined') {
+    module.exports = EventEmitter;
+  }
 
 }).call(this);
