@@ -50,7 +50,8 @@ module.exports = (grunt) ->
           failOnError: true
 
       jasmine_watch:
-        command: "node_modules/jasmine-node/bin/jasmine-node --autotest --watch . --noStack --coffee spec/"
+        # command: "node_modules/jasmine-node/bin/jasmine-node --autotest --watch . --noStack --coffee spec/"
+        command: "node_modules/jasmine-node/bin/jasmine-node --autotest --watch . --coffee spec/"
         options:
           stdout: true
 

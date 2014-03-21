@@ -1,7 +1,7 @@
 EventEmitter = require './event_emitter'
 
 class Client extends EventEmitter
-  constructor: (@adapter,@gameEventFactory, @clientMessageFactory) ->
+  constructor: (@adapter,@gameEventFactory, @clientMessageFactory, @simulationEventFactory) ->
     @gameStarted = false
     @clientId = null
     @simulationEventsBuffer = []
@@ -28,7 +28,7 @@ class Client extends EventEmitter
 
         when 'ServerMsg::TurnComplete'
           turnEvents = []
-          for i in [1..@simulationEventsBuffer.length]
+          for i in [0...@simulationEventsBuffer.length]
             turnEvents.push @simulationEventsBuffer.shift()
            
           f = (checksum) ->
@@ -46,7 +46,7 @@ class Client extends EventEmitter
           @gameStarted = true
           for simEvent in @_unpackProtoTurn(msg.protoTurn)
             @simulationEventsBuffer.push simEvent
-          # @emit 'GameEvent::StartGame', msg.yourId, msg.turnPeriod, msg.currentTurn, msg.gamestate
+
           @preGameEventsBuffer.push @gameEventFactory.startGame(msg.yourId, msg.turnPeriod, msg.currentTurn, msg.gamestate)
 
         when 'ServerMsg::GamestateRequest'
@@ -67,11 +67,12 @@ class Client extends EventEmitter
 
 
   update: (callback) ->
-    for i in [1..@preGameEventsBuffer.length]
+    for i in [0...@preGameEventsBuffer.length]
       callback @preGameEventsBuffer.shift()
     if @gameStarted
-      for i in [1..@gameEventsBuffer.length]
-        callback @gameEventsBuffer.shift()
+      for i in [0...@gameEventsBuffer.length]
+        event = @gameEventsBuffer.shift()
+        callback(event)
 
   sendEvent: (data) ->
     @_sendMessage @clientMessageFactory.event(data)
@@ -93,3 +94,5 @@ class Client extends EventEmitter
 
   _sendMessage: (msg) ->
     @adapter.send @_packClientMessage(msg)
+
+module.exports = Client
