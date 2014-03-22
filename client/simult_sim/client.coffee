@@ -31,7 +31,7 @@ class Client extends EventEmitter
           for i in [0...@simulationEventsBuffer.length]
             turnEvents.push @simulationEventsBuffer.shift()
            
-          f = (checksum) ->
+          f = (checksum) =>
             @_sendMessage @clientMessageFactory.turnFinished(
               msg.turnNumber,
               checksum
@@ -51,7 +51,7 @@ class Client extends EventEmitter
 
         when 'ServerMsg::GamestateRequest'
           protoTurn = @_packProtoTurn(@simulationEventsBuffer)
-          f = (gamestate) ->
+          f = (gamestate) =>
             @_sendMessage @clientMessageFactory.gamestate(
               msg.forPlayerId,
               protoTurn,

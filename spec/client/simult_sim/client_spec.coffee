@@ -13,15 +13,39 @@ describe 'Client', ->
   gameEvents = null
   updateBlock = null
 
+  # Helpers:
+
+  packClientMessage = (msg) -> msg  # noop for now, but someday...
+
+  packServerMessage = (msg) -> msg  # noop for now
+
+  packProtoTurn = (simEventArray) -> simEventArray # noop for now
+  unpackProtoTurn = (packedProtoTurn) -> packedProtoTurn # noop for now
+
+  buildAndPackServerMsg = (name,info) ->
+    info.type = "ServerMsg::#{name}"
+    packServerMessage info
+
+  emitPacket = (packet) ->
+    adapter.emit 'ClientAdapter::Packet', packet
+
+  emitServerMsgPacket = (name,info) ->
+    packet = buildAndPackServerMsg name, info
+    emitPacket packet
+      
   beforeEach ->
+    # Create a stubbed ClientAdapter for spying on:
     adapter = new EventEmitter()
     adapter.disconnect = ->
     adapter.send = (data) ->
+    # Utilize the actual msg builders for clarity
     gameEventFactory = new GameEventFactory()
     clientMessageFactory = new ClientMessageFactory()
     simulationEventFactory = new SimulationEventFactory()
+
     subject = new Client(adapter, gameEventFactory, clientMessageFactory, simulationEventFactory)
 
+    # Generic callback to pass to subject.update()
     gameEvents = []
     updateBlock = (event) ->
       gameEvents.push event
@@ -49,14 +73,6 @@ describe 'Client', ->
         expect(e.type).toEqual("GameEvent::Disconnect")
       
   describe 'when ClientAdapter::Packet arrives', ->
-    buildAndPackServerMsg = (name,info) ->
-      info.type = "ServerMsg::#{name}"
-      info # currently, packing server msgs is a noop
-
-    emitServerMsgPacket = (name,info) ->
-      packet = buildAndPackServerMsg name, info
-      adapter.emit 'ClientAdapter::Packet', packet
-      
 
     describe 'with ServerMsg::IdAssigned', ->
       it 'sets clientId', ->
@@ -111,17 +127,131 @@ describe 'Client', ->
         expect(gameEvents.length).toEqual 0
 
         subject.gameStarted = true
+
+        # Go for real!
         subject.update updateBlock
         expect(gameEvents.length).toEqual 1
 
         event = gameEvents.shift()
+        expect(event.type).toEqual 'GameEvent::TurnComplete'
         expect(event.events).toEqual [
           simulationEventFactory.event 'p1', 'event1 data'
           simulationEventFactory.playerJoined 'p2'
           simulationEventFactory.playerLeft 'p3'
           simulationEventFactory.event 'p4', 'another data'
         ]
+        expect(event.checksumClosure).toBeDefined()
 
-        console.log "Game event:",event
-        expect("wat").toEqual "FINISH ME"
+        # The TurnComplete game event contains a followup function
+        # that packs and sends ClientMsg::TurnFinished back to the server.
+        spyOn(adapter, "send")
+        expectedMsg = clientMessageFactory.turnFinished(37, 'le checksum')
+        packedMsg = packClientMessage(expectedMsg)
+
+        # Run the closure:
+        event.checksumClosure('le checksum')
+
+        expect(adapter.send).toHaveBeenCalledWith(packedMsg)
+
+    describe 'with ServerMsg::StartGame', ->
+      simEvents = []
+      yourId = 42
+      turnPeriod = 0.25
+      currentTurn = 23
+      gamestate = 'serialized game state'
+
+      beforeEach ->
+        simEvents = [
+          simulationEventFactory.event 'p1', 'event1 data'
+          simulationEventFactory.playerJoined 'p2'
+        ]
+      
+      emitStartGame = ->
+        emitServerMsgPacket 'StartGame',
+          yourId: yourId
+          turnPeriod: turnPeriod
+          currentTurn: currentTurn
+          protoTurn: packProtoTurn(simEvents)
+          gamestate: gamestate
+
+      # Naughty.  Peeking!
+      it "sets gameStarted to true", ->
+        expect(subject.gameStarted).toBeFalsy()
+        emitStartGame()
+        expect(subject.gameStarted).toBeTruthy()
+
+      # Naughty.  Peeking!
+      it "populates the sim events w contents of protoTurn", ->
+        expect(subject.simulationEventsBuffer.length).toEqual 0
+        emitStartGame()
+        expect(subject.simulationEventsBuffer).toEqual simEvents
+
+      it "enqueues a StartGame event for next update", ->
+        emitStartGame()
+        expect(gameEvents).toEqual []
+
+        subject.update updateBlock
+
+        expect(gameEvents.length).toEqual 1
+        expect(gameEvents.shift()).toEqual gameEventFactory.startGame(
+          yourId,
+          turnPeriod,
+          currentTurn,
+          gamestate)
+
+    describe 'with ServerMsg::GamestateRequest', ->
+      gamestate = 'serialized gamestate'
+      requestingPlayerId = 99
+
+      beforeEach ->
+        spyOn(adapter, "send")
+        
+      
+      testGamestateRequest = ->
+        # generate some simulation events
+        emitServerMsgPacket 'Event', sourcePlayerId: 'p1', data: 'event1 data'
+        emitServerMsgPacket 'PlayerJoined', playerId: 'p2'
+        # initiate the state request
+        emitServerMsgPacket 'GamestateRequest', forPlayerId: requestingPlayerId
+
+        subject.update updateBlock
+
+        # At this point, the 'ask' for gamestate has been emitted from the Client:
+        event = gameEvents.shift()
+        expect(event.gamestateClosure).toBeDefined()
+
+        expect(adapter.send).not.toHaveBeenCalled()
+
+        # Invoke the callback to provide gamestate:
+        event.gamestateClosure(gamestate)
+
+        expect(adapter.send).toHaveBeenCalledWith clientMessageFactory.gamestate(
+          requestingPlayerId,
+          packProtoTurn([
+            simulationEventFactory.event 'p1', 'event1 data'
+            simulationEventFactory.playerJoined 'p2'
+          ]),
+          gamestate)
+
+      it 'packs up a protoTurn based on current sim events, then asks the user code for serialized gamestate, then sends a Gamestate msg to the server', ->
+        subject.gameStarted = true  # naughty. cheats.  do this more integration style? use real event?
+        testGamestateRequest()
+      it 'works similarly even if game not yet started', ->
+        subject.gameStarted = false  # naughty. cheats.  
+        testGamestateRequest()
+
+  describe 'sendEvent', ->
+    it "wraps the data in a ClientMsg::Event and sends over adapter", ->
+      spyOn(adapter, "send")
+      subject.sendEvent('the data')
+      expect(adapter.send).toHaveBeenCalledWith clientMessageFactory.event('the data')
+
+  describe 'disconnect', ->
+    it "calls disconnect on the ClientAdapter", ->
+      spyOn(adapter, "disconnect")
+      subject.disconnect()
+      expect(adapter.disconnect).toHaveBeenCalled()
+      
+      
+      
 

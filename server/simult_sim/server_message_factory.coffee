@@ -38,7 +38,7 @@ class ServerMessageFactory
 
   startGame: (forPlayerId, turnPeriod, currentTurn, protoTurn, gamestateData) ->
     {
-      type: 'ServerMessage::Event'
+      type: 'ServerMessage::StartGame'
       yourId: forPlayerId
       turnPeriod: turnPeriod
       currentTurn: currentTurn
