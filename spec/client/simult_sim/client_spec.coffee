@@ -60,7 +60,7 @@ describe 'Client', ->
         subject.gameStarted = true
         subject.update updateBlock
         e = gameEvents.shift()
-        expect(e.type).toEqual("GameEvent::Disconnect")
+        expect(e.type).toEqual("GameEvent::Disconnected")
       
     describe 'after game is started', ->
       beforeEach ->
@@ -70,7 +70,7 @@ describe 'Client', ->
         adapter.emit 'ClientAdapter::Disconnect'
         subject.update updateBlock
         e = gameEvents.shift()
-        expect(e.type).toEqual("GameEvent::Disconnect")
+        expect(e.type).toEqual("GameEvent::Disconnected")
       
   describe 'when ClientAdapter::Packet arrives', ->
 

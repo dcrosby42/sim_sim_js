@@ -1,7 +1,7 @@
 class GameEventFactory
-  disconnect: ->
+  disconnected: ->
     {
-      type: 'GameEvent::Disconnect'
+      type: 'GameEvent::Disconnected'
     }
 
   gamestateRequest: (f) ->

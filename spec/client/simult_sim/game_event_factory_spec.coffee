@@ -9,10 +9,10 @@ describe 'GameEventFactory', ->
   beforeEach ->
     subject = new GameEventFactory()
   
-  it 'should create a Disconnect event structure', ->
-    msg = subject.disconnect()
+  it 'should create a Disconnected event structure', ->
+    msg = subject.disconnected()
     expect(msg).toEqual
-      type: 'GameEvent::Disconnect'
+      type: 'GameEvent::Disconnected'
   
   it 'should create a GamestateRequest event structure', ->
     invoked = false
