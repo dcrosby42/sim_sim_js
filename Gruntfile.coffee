@@ -44,7 +44,7 @@ module.exports = (grunt) ->
           stdout: true
 
       jasmine:
-        command: "node_modules/jasmine-node/bin/jasmine-node --noStack --coffee spec/"
+        command: "node_modules/jasmine-node/bin/jasmine-node --coffee spec/"
         options:
           stdout: true
           failOnError: true

@@ -1,0 +1,19 @@
+client/simult_sim
+  SPEC:
+    SimulationStateFactory
+    UserEventSerializer
+    Simulation
+      turn mgmt
+      TurnComplete - checksum calc & send via closure
+
+  SRC:
+    SimulationStateSerializer
+      packSimulationState
+      unpackSimulationState
+      calcWorldChecksum
+    TurnCalculator
+      advanceTurn
+
+      
+
+

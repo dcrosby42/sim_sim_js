@@ -27,12 +27,11 @@ describe 'Simulation', ->
           callback(e)
     }
     turnCalculator = jasmine.createSpyObj 'turnCalculator', [
-      'turn'
-      'stepTime'
-      'stepUntil'
+      'advanceTurn'
+      'stepUntilTurnTime'
     ]
-    simulationStateFactory = { createSimulationState: null }
-    simulationStateSerializer = { packSimulationState: null, unpackSimulationState: null }
+    simulationStateFactory = { createSimulationState: (->) }
+    simulationStateSerializer = { packSimulationState: (->), unpackSimulationState: (->), calcWorldChecksum: (->) }
     subject = new Simulation(
       client
       turnCalculator
@@ -54,7 +53,14 @@ describe 'Simulation', ->
   describe 'worldState', ->
     it 'returns null if simState not yet initialized', ->
       expect(subject.worldState()).toEqual(null)
-    # TODO: TEST THIS AFTER WORLD STATE IS SET
+
+    # TODO: this test kinda sucks because it forces internal state.  Better than nothing for now.
+    it 'returns the world from simState', ->
+      subject.simState = defaultSimState
+      subject.simState.world = "the world"
+      expect(subject.worldState()).toEqual("the world")
+
+
 
   describe 'quit', ->
     it 'calls disconnect on the client', ->
@@ -63,6 +69,22 @@ describe 'Simulation', ->
       expect(client.disconnect).toHaveBeenCalled()
       
   describe 'update', ->
+    it 'steps the simState appropriate to the given time', ->
+      subject.simState = defaultSimState # nauhgty
+
+      subject.update(0.25)
+      subject.update(0.5)
+
+      expect(turnCalculator.stepUntilTurnTime).toHaveBeenCalledWith(subject.simState, 0.25)
+      expect(turnCalculator.stepUntilTurnTime).toHaveBeenCalledWith(subject.simState, 0.5)
+
+      # See the time sent to turnCalculator is relative to lastTurnTime
+      subject.lastTurnTime = 1.5 # TODO damn naughty! not for us to say! (Better: use TurnCompleted event!)
+      subject.update(1.8)
+      expect(turnCalculator.stepUntilTurnTime).toHaveBeenCalledWith(subject.simState, 0.3)
+
+      
+
     describe 'GameEvent::GamestateRequest', ->
       it 'generates a new SimulationState and invokes the gamestate callback w serialized sim state', ->
         # Prep the gamestate event and its callback:
@@ -148,24 +170,41 @@ describe 'Simulation', ->
     turnNumber = 54321
     turnCompleteEvents = null
     sentChecksum = null
-    checksumClosure = (checksum) -> sentChecksum
+    checksumClosure = (checksum) -> 
+      sentChecksum = checksum
     world = null
 
     beforeEach ->
-      sentChecksum = null
       turnCompleteEvents = []
       turnComplete = gameEventFactory.turnComplete(turnNumber,turnCompleteEvents,checksumClosure)
       client._testGameEvents.push turnComplete
       world =
         playerJoined: null
         playerLeft: null
-        incomingEvent: null
+        incomingEvent: (->)
         shootGun: null
 
       subject.simState =
         world: world
         
     
+    it 'advances the current turn in simState', ->
+      expect(subject.lastTurnTime).toEqual 0
+      subject.update(0.4)
+      expect(turnCalculator.advanceTurn).toHaveBeenCalledWith(subject.simState)
+      expect(subject.lastTurnTime).toEqual 0.4
+
+    it "creates a checksum over the state of the world", ->
+      worldChecksum = 'the world checksum'
+      spyOn(simulationStateSerializer, 'calcWorldChecksum').andReturn(worldChecksum)
+      turnCompleteEvents.push simulationEventFactory.event(11, {type:'whatever',val:'whocares'})
+
+      subject.update(t)
+
+
+      expect(simulationStateSerializer.calcWorldChecksum).toHaveBeenCalledWith(world)
+      expect(sentChecksum).toEqual worldChecksum
+
 
     describe 'on SimulationEvent::Event', ->
       describe 'containing WorldProxyEvent', ->

@@ -1,9 +1,11 @@
+require '../helpers'
 # EventEmitter = require './event_emitter'
 
 
 class Simulation
   constructor: (@client,@turnCalculator,@simulationStateFactory,@simulationStateSerializer, @userEventSerializer) ->
     @simWorld = null
+    @lastTurnTime = 0
 
   worldState: ->
     @simState.world if @simState
@@ -12,10 +14,17 @@ class Simulation
     @client.disconnect()
     @simState = null
 
+  # Accepts t (time) in partial seconds (floating point, eg, 1.75 seconds)
   update: (t) ->
+    if @simState
+      elapsedTurnTime = (t - @lastTurnTime).fixed()
+      @turnCalculator.stepUntilTurnTime @simState, elapsedTurnTime
+
     @client.update (gameEvent) =>
       switch gameEvent.type
         when 'GameEvent::TurnComplete'
+          @turnCalculator.advanceTurn @simState
+          @lastTurnTime = t
           for simEvent in gameEvent.events
             switch simEvent.type
 
@@ -31,6 +40,9 @@ class Simulation
 
               when 'SimulationEvent::PlayerLeft'
                 @simState.world.playerLeft simEvent.playerId
+
+          checksum = @simulationStateSerializer.calcWorldChecksum(@simState.world)
+          gameEvent.checksumClosure(checksum)
 
         when 'GameEvent::StartGame'
           @ourId = gameEvent.ourId
