@@ -3,8 +3,13 @@ require '../helpers'
 
 
 class Simulation
-  constructor: (@client,@turnCalculator,@simulationStateFactory,@simulationStateSerializer, @userEventSerializer) ->
-    @simWorld = null
+  constructor: (
+      @client
+      @turnCalculator
+      @simulationStateFactory
+      @simulationStateSerializer
+      @userEventSerializer
+    ) ->
     @lastTurnTime = 0
 
   worldState: ->
