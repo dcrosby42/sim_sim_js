@@ -21,6 +21,8 @@ describe 'Simulation', ->
   beforeEach ->
     client = {
       disconnect: ->
+      sendEvent: ->
+
       _testGameEvents: []
       update: (callback) ->
         while e = @_testGameEvents.shift()
@@ -46,6 +48,11 @@ describe 'Simulation', ->
 
     t = 0
     
+    @world =
+      playerJoined: null
+      playerLeft: null
+      incomingEvent: (->)
+      shootGun: null
   
   it 'exists', ->
     expect(Simulation).toBeDefined()
@@ -60,7 +67,19 @@ describe 'Simulation', ->
       subject.simState.world = "the world"
       expect(subject.worldState()).toEqual("the world")
 
-
+  describe 'worldProxy', ->
+    it 'creates a UserEvent::WorldProxyEvent and sends it', ->
+      spyOn(client, "sendEvent")
+      subject.worldProxy('goBananas', 42, "cats")
+      event = {type: 'UserEvent::WorldProxyEvent', method: 'goBananas', args: [42,"cats"]}
+      expect(client.sendEvent).toHaveBeenCalledWith(userEventSerializer.pack(event))
+      
+  describe 'sendEvent', ->
+    it 'packs the given event and send it through @client', ->
+      spyOn(client, "sendEvent")
+      event = {type:'x', stuff:'data'}
+      subject.sendEvent(event)
+      expect(client.sendEvent).toHaveBeenCalledWith(userEventSerializer.pack(event))
 
   describe 'quit', ->
     it 'calls disconnect on the client', ->
@@ -172,20 +191,14 @@ describe 'Simulation', ->
     sentChecksum = null
     checksumClosure = (checksum) -> 
       sentChecksum = checksum
-    world = null
 
     beforeEach ->
       turnCompleteEvents = []
       turnComplete = gameEventFactory.turnComplete(turnNumber,turnCompleteEvents,checksumClosure)
       client._testGameEvents.push turnComplete
-      world =
-        playerJoined: null
-        playerLeft: null
-        incomingEvent: (->)
-        shootGun: null
 
       subject.simState =
-        world: world
+        world: @world
         
     
     it 'advances the current turn in simState', ->
@@ -202,7 +215,7 @@ describe 'Simulation', ->
       subject.update(t)
 
 
-      expect(simulationStateSerializer.calcWorldChecksum).toHaveBeenCalledWith(world)
+      expect(simulationStateSerializer.calcWorldChecksum).toHaveBeenCalledWith(@world)
       expect(sentChecksum).toEqual worldChecksum
 
 
@@ -211,35 +224,35 @@ describe 'Simulation', ->
         it "invokes the specified method on the world", ->
           userEvent = {type:'UserEvent::WorldProxyEvent', method: 'shootGun', args:["flare",4]}
           turnCompleteEvents.push simulationEventFactory.event(11, userEvent)
-          spyOn(world, 'shootGun')
+          spyOn(@world, 'shootGun')
 
           subject.update(t)
-          expect(world.shootGun).toHaveBeenCalledWith(11, "flare", 4)
+          expect(@world.shootGun).toHaveBeenCalledWith(11, "flare", 4)
 
       describe 'containing some other event', ->
         it "invokes incomingEvent the world", ->
           userEvent = {type:'UserEvent::SomethingElse', unspecified: {things:"inside"}}
           turnCompleteEvents.push simulationEventFactory.event(22, userEvent)
 
-          spyOn(world, 'incomingEvent')
+          spyOn(@world, 'incomingEvent')
 
           subject.update(t)
-          expect(world.incomingEvent).toHaveBeenCalledWith(22, userEvent)
+          expect(@world.incomingEvent).toHaveBeenCalledWith(22, userEvent)
 
 
     describe 'on SimulationEvent::PlayerJoined', ->
       it 'tells the world a player joined', ->
         turnCompleteEvents.push simulationEventFactory.playerJoined(37)
-        spyOn(world, 'playerJoined')
+        spyOn(@world, 'playerJoined')
         subject.update(t)
-        expect(world.playerJoined).toHaveBeenCalledWith(37)
+        expect(@world.playerJoined).toHaveBeenCalledWith(37)
 
     describe 'on SimulationEvent::PlayerLeft', ->
       it 'tells the world a player left', ->
         turnCompleteEvents.push simulationEventFactory.playerLeft(42)
-        spyOn(world, 'playerLeft')
+        spyOn(@world, 'playerLeft')
         subject.update(t)
-        expect(world.playerLeft).toHaveBeenCalledWith(42)
+        expect(@world.playerLeft).toHaveBeenCalledWith(42)
     
   
 

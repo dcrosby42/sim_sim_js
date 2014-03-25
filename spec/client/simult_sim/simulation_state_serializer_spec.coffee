@@ -19,7 +19,7 @@ describe 'SimulationStateSerialzier', ->
     
   describe 'calcWorldChecksum', ->
     it 'is merely a placeholder for now', ->
-      world = {what:'ever'} 
+      world = {what:'ever'}
       checksum = @subject.calcWorldChecksum(world)
       expect(checksum).toEqual 'temporary world checksum'
 

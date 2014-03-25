@@ -5,7 +5,7 @@ class SocketIOClientAdapter extends EventEmitter
     @socket.on 'data', (data) =>
       @emit 'ClientAdapter::Packet', data
     @socket.on 'disconnect', =>
-      @emit 'ClientAdapter::Disconnect'
+      @emit 'ClientAdapter::Disconnected'
   
   send: (data) ->
     @socket.emit 'data', data

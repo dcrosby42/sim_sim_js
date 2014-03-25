@@ -50,10 +50,10 @@ describe 'Client', ->
     updateBlock = (event) ->
       gameEvents.push event
 
-  describe 'when ClientAdapter::Disconnect arrives', ->
+  describe 'when ClientAdapter::Disconnected arrives', ->
     describe 'before game is started', ->
       it 'enqueus it internally but does not relay', ->
-        adapter.emit 'ClientAdapter::Disconnect'
+        adapter.emit 'ClientAdapter::Disconnected'
         subject.update updateBlock
         expect(gameEvents.length).toEqual 0
         # once game is started, the disconnect event can come out:
@@ -66,8 +66,8 @@ describe 'Client', ->
       beforeEach ->
         subject.gameStarted = true
       
-      it 'enqueues a Disconnect message on ClientAdapter::Disconnect', ->
-        adapter.emit 'ClientAdapter::Disconnect'
+      it 'enqueues a Disconnected message on ClientAdapter::Disconnected', ->
+        adapter.emit 'ClientAdapter::Disconnected'
         subject.update updateBlock
         e = gameEvents.shift()
         expect(e.type).toEqual("GameEvent::Disconnected")

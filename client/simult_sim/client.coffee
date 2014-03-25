@@ -8,7 +8,7 @@ class Client extends EventEmitter
     @gameEventsBuffer = []
     @preGameEventsBuffer = []
 
-    @adapter.on 'ClientAdapter::Disconnect', =>
+    @adapter.on 'ClientAdapter::Disconnected', =>
       @gameEventsBuffer.push @gameEventFactory.disconnected()
 
     @adapter.on 'ClientAdapter::Packet', (data) =>

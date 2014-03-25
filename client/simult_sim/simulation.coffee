@@ -19,6 +19,15 @@ class Simulation
     @client.disconnect()
     @simState = null
 
+  worldProxy: (method, args...) ->
+    @sendEvent
+      type: 'UserEvent::WorldProxyEvent'
+      method: method
+      args: args
+
+  sendEvent: (event) ->
+    @client.sendEvent @userEventSerializer.pack(event)
+
   # Accepts t (time) in partial seconds (floating point, eg, 1.75 seconds)
   update: (t) ->
     if @simState
