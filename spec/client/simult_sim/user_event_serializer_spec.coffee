@@ -1,4 +1,4 @@
-UserEventSerializer = require '../../../client/simult_sim/user_event_serializer'
+UserEventSerializer = require '../../../client/simult_sim/user_event_serializer.coffee'
 
 describe 'UserEventSerialzier', ->
   

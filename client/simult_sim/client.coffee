@@ -1,4 +1,4 @@
-EventEmitter = require './event_emitter'
+EventEmitter = require './event_emitter.coffee'
 
 class Client extends EventEmitter
   constructor: (@adapter,@gameEventFactory, @clientMessageFactory, @simulationEventFactory) ->

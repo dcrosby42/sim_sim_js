@@ -1,6 +1,6 @@
-TurnCalculator = require '../../../client/simult_sim/turn_calculator'
-SimulationStateFactory = require '../../../client/simult_sim/simulation_state_factory'
-require '../../../client/helpers'
+TurnCalculator = require '../../../client/simult_sim/turn_calculator.coffee'
+SimulationStateFactory = require '../../../client/simult_sim/simulation_state_factory.coffee'
+require '../../../client/helpers.coffee'
 
 describe 'TurnCalculator', ->
   subject = null

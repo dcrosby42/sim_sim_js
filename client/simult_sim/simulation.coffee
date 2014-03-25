@@ -1,4 +1,4 @@
-require '../helpers'
+require '../helpers.coffee'
 # EventEmitter = require './event_emitter'
 
 

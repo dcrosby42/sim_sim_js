@@ -1,4 +1,4 @@
-SimulationState = require './simulation_state'
+SimulationState = require './simulation_state.coffee'
 
 class SimulationStateFactory
   constructor: (@defaults) ->
