@@ -1,15 +1,18 @@
-client/simult_sim
-  SPEC:
-    SimulationStateFactory
-    UserEventSerializer
 
-  SRC:
-    SimulationStateSerializer
-      packSimulationState
-      unpackSimulationState
-      calcWorldChecksum
-    UserEventSerializer
+WorldProxy / WorldProxyEvent
+  NO METHOD MISSING TRICKS!
 
-      
+
+Actual Serialization!
+  None of the server, client, user, sim, or gameevents utilizes any real serialization.
+  EVERYTHING IS JUST JS OBJECTS AT PRESENT
+    -> expecting to be JSON-ified behind the scenes by SocketIO
+  ...BUT WAIT until proving out the logic of the system top-to-bottom, it should work
+  (but we need packing eventually for efficiency)
+
+
+
+
+    
 
 
