@@ -22,15 +22,15 @@ describe 'Client', ->
   packProtoTurn = (simEventArray) -> simEventArray # noop for now
   unpackProtoTurn = (packedProtoTurn) -> packedProtoTurn # noop for now
 
-  buildAndPackServerMsg = (name,info) ->
-    info.type = "ServerMsg::#{name}"
+  buildAndPackServerMessage = (name,info) ->
+    info.type = "ServerMessage::#{name}"
     packServerMessage info
 
   emitPacket = (packet) ->
     adapter.emit 'ClientAdapter::Packet', packet
 
-  emitServerMsgPacket = (name,info) ->
-    packet = buildAndPackServerMsg name, info
+  emitServerMessagePacket = (name,info) ->
+    packet = buildAndPackServerMessage name, info
     emitPacket packet
       
   beforeEach ->
@@ -74,35 +74,35 @@ describe 'Client', ->
       
   describe 'when ClientAdapter::Packet arrives', ->
 
-    describe 'with ServerMsg::IdAssigned', ->
+    describe 'with ServerMessage::IdAssigned', ->
       it 'sets clientId', ->
-        emitServerMsgPacket 'IdAssigned', ourId: 'the new id'
+        emitServerMessagePacket 'IdAssigned', ourId: 'the new id'
         expect(subject.clientId).toEqual 'the new id'
 
-    describe 'with ServerMsg::Event', ->
+    describe 'with ServerMessage::Event', ->
       it 'buffers a simulation event w data', ->
-        emitServerMsgPacket 'Event', sourcePlayerId: 'p1', data: 'event1 data'
-        emitServerMsgPacket 'Event', sourcePlayerId: 'p2', data: 'event2 data'
+        emitServerMessagePacket 'Event', sourcePlayerId: 'p1', data: 'event1 data'
+        emitServerMessagePacket 'Event', sourcePlayerId: 'p2', data: 'event2 data'
         expect(subject.simulationEventsBuffer).toEqual(
           [
             simulationEventFactory.event('p1', 'event1 data')
             simulationEventFactory.event('p2', 'event2 data')
           ]
         )
-    describe 'with ServerMsg::PlayerJoined', ->
+    describe 'with ServerMessage::PlayerJoined', ->
       it "buffers a simulation event for player joined", ->
-        emitServerMsgPacket 'PlayerJoined', playerId: 'p1'
-        emitServerMsgPacket 'PlayerJoined', playerId: 'p2'
+        emitServerMessagePacket 'PlayerJoined', playerId: 'p1'
+        emitServerMessagePacket 'PlayerJoined', playerId: 'p2'
         expect(subject.simulationEventsBuffer).toEqual(
           [
             simulationEventFactory.playerJoined('p1')
             simulationEventFactory.playerJoined('p2')
           ]
         )
-    describe 'with ServerMsg::PlayerLeft', ->
+    describe 'with ServerMessage::PlayerLeft', ->
       it "buffers a simulation event for player left", ->
-        emitServerMsgPacket 'PlayerLeft', playerId: 'p1'
-        emitServerMsgPacket 'PlayerLeft', playerId: 'p2'
+        emitServerMessagePacket 'PlayerLeft', playerId: 'p1'
+        emitServerMessagePacket 'PlayerLeft', playerId: 'p2'
         expect(subject.simulationEventsBuffer).toEqual(
           [
             simulationEventFactory.playerLeft('p1')
@@ -110,17 +110,17 @@ describe 'Client', ->
           ]
         )
 
-    describe 'with ServerMsg::TurnComplete', ->
+    describe 'with ServerMessage::TurnComplete', ->
       it "bundles prior sim events into a turnComplete game event", ->
-        emitServerMsgPacket 'Event', sourcePlayerId: 'p1', data: 'event1 data'
-        emitServerMsgPacket 'PlayerJoined', playerId: 'p2'
-        emitServerMsgPacket 'PlayerLeft', playerId: 'p3'
-        emitServerMsgPacket 'Event', sourcePlayerId: 'p4', data: 'another data'
+        emitServerMessagePacket 'Event', sourcePlayerId: 'p1', data: 'event1 data'
+        emitServerMessagePacket 'PlayerJoined', playerId: 'p2'
+        emitServerMessagePacket 'PlayerLeft', playerId: 'p3'
+        emitServerMessagePacket 'Event', sourcePlayerId: 'p4', data: 'another data'
 
         subject.update updateBlock
         expect(gameEvents.length).toEqual 0
 
-        emitServerMsgPacket 'TurnComplete', turnNumber: 37
+        emitServerMessagePacket 'TurnComplete', turnNumber: 37
         
         subject.update updateBlock
         # STILL should be nothing because @gameStarted not set true yet
@@ -153,7 +153,7 @@ describe 'Client', ->
 
         expect(adapter.send).toHaveBeenCalledWith(packedMsg)
 
-    describe 'with ServerMsg::StartGame', ->
+    describe 'with ServerMessage::StartGame', ->
       simEvents = []
       yourId = 42
       turnPeriod = 0.25
@@ -167,7 +167,7 @@ describe 'Client', ->
         ]
       
       emitStartGame = ->
-        emitServerMsgPacket 'StartGame',
+        emitServerMessagePacket 'StartGame',
           yourId: yourId
           turnPeriod: turnPeriod
           currentTurn: currentTurn
@@ -199,7 +199,7 @@ describe 'Client', ->
           currentTurn,
           gamestate)
 
-    describe 'with ServerMsg::GamestateRequest', ->
+    describe 'with ServerMessage::GamestateRequest', ->
       gamestate = 'serialized gamestate'
       requestingPlayerId = 99
 
@@ -209,10 +209,10 @@ describe 'Client', ->
       
       testGamestateRequest = ->
         # generate some simulation events
-        emitServerMsgPacket 'Event', sourcePlayerId: 'p1', data: 'event1 data'
-        emitServerMsgPacket 'PlayerJoined', playerId: 'p2'
+        emitServerMessagePacket 'Event', sourcePlayerId: 'p1', data: 'event1 data'
+        emitServerMessagePacket 'PlayerJoined', playerId: 'p2'
         # initiate the state request
-        emitServerMsgPacket 'GamestateRequest', forPlayerId: requestingPlayerId
+        emitServerMessagePacket 'GamestateRequest', forPlayerId: requestingPlayerId
 
         subject.update updateBlock
 

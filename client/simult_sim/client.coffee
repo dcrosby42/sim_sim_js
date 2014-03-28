@@ -9,47 +9,36 @@ class Client extends EventEmitter
     @preGameEventsBuffer = []
 
     @adapter.on 'ClientAdapter::Disconnected', =>
+      @_debug "rec'd ClientAdapter::Disconnected"
       @gameEventsBuffer.push @gameEventFactory.disconnected()
 
     @adapter.on 'ClientAdapter::Packet', (data) =>
       msg = @_unpackServerMessage(data)
+      @_debug "rec'd ClientAdapter::Packet", msg
       switch msg.type
-        when 'ServerMsg::IdAssigned'
+        when 'ServerMessage::IdAssigned'
           @clientId = msg.ourId
 
-        when 'ServerMsg::Event'
+        when 'ServerMessage::Event'
           @simulationEventsBuffer.push @simulationEventFactory.event(msg.sourcePlayerId, msg.data)
 
-        when 'ServerMsg::PlayerJoined'
+        when 'ServerMessage::PlayerJoined'
           @simulationEventsBuffer.push @simulationEventFactory.playerJoined(msg.playerId)
 
-        when 'ServerMsg::PlayerLeft'
+        when 'ServerMessage::PlayerLeft'
           @simulationEventsBuffer.push @simulationEventFactory.playerLeft(msg.playerId)
 
-        when 'ServerMsg::TurnComplete'
-          turnEvents = []
-          for i in [0...@simulationEventsBuffer.length]
-            turnEvents.push @simulationEventsBuffer.shift()
-           
-          f = (checksum) =>
-            @_sendMessage @clientMessageFactory.turnFinished(
-              msg.turnNumber,
-              checksum
-            )
-          @gameEventsBuffer.push @gameEventFactory.turnComplete(
-            msg.turnNumber,
-            turnEvents,
-            f
-          )
+        when 'ServerMessage::TurnComplete'
+          @_turnComplete msg
 
-        when 'ServerMsg::StartGame'
+        when 'ServerMessage::StartGame'
           @gameStarted = true
           for simEvent in @_unpackProtoTurn(msg.protoTurn)
             @simulationEventsBuffer.push simEvent
 
           @preGameEventsBuffer.push @gameEventFactory.startGame(msg.yourId, msg.turnPeriod, msg.currentTurn, msg.gamestate)
 
-        when 'ServerMsg::GamestateRequest'
+        when 'ServerMessage::GamestateRequest'
           protoTurn = @_packProtoTurn(@simulationEventsBuffer)
           f = (gamestate) =>
             @_sendMessage @clientMessageFactory.gamestate(
@@ -62,9 +51,6 @@ class Client extends EventEmitter
             @gameEventsBuffer.push gameEvent
           else
             @preGameEventsBuffer.push gameEvent
-
-
-
 
   update: (callback) ->
     for i in [0...@preGameEventsBuffer.length]
@@ -80,6 +66,22 @@ class Client extends EventEmitter
   disconnect: ->
     @adapter.disconnect()
 
+  _turnComplete: (msg) ->
+    turnEvents = []
+    for i in [0...@simulationEventsBuffer.length]
+      turnEvents.push @simulationEventsBuffer.shift()
+     
+    f = (checksum) =>
+      @_sendMessage @clientMessageFactory.turnFinished(
+        msg.turnNumber,
+        checksum
+      )
+    @gameEventsBuffer.push @gameEventFactory.turnComplete(
+      msg.turnNumber,
+      turnEvents,
+      f
+    )
+
   _unpackServerMessage: (data) ->
     data
 
@@ -93,6 +95,11 @@ class Client extends EventEmitter
     protoTurn
 
   _sendMessage: (msg) ->
+    @_debug "_sendMessage", msg
     @adapter.send @_packClientMessage(msg)
+
+  _debug: (args...) ->
+    console.log "[Client]", args...
+
 
 module.exports = Client

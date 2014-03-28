@@ -8,7 +8,8 @@ Number.prototype.fixed = function(n) {
 },{}],2:[function(require,module,exports){
 var Client, ClientMessageFactory, GameEventFactory, MyWorld, Simulation, SimulationEventFactory, SimulationStateFactory, SimulationStateSerializer, SocketIOClientAdapter, TurnCalculator, UserEventSerializer, WorldBase, adapter, client, clientMessageFactory, gameEventFactory, simulation, simulationEventFactory, simulationStateFactory, simulationStateSerializer, socket, turnCalculator, userEventSerializer,
   __hasProp = {}.hasOwnProperty,
-  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+  __slice = [].slice;
 
 SocketIOClientAdapter = require('./simult_sim/socket_io_client_adapter.coffee');
 
@@ -58,19 +59,28 @@ MyWorld = (function(_super) {
   }
 
   MyWorld.prototype.playerJoined = function(id) {
-    return this.players[id] = {
+    this.players[id] = {
       score: 0
     };
+    return this._debug("Player " + id + " JOINED");
   };
 
   MyWorld.prototype.playerLeft = function(id) {
-    return delete this.players[id];
+    delete this.players[id];
+    return this._debug("Player " + id + " LEFT");
   };
 
   MyWorld.prototype.step = function(dt) {};
 
   MyWorld.prototype.addScore = function(id, score) {
-    return this.players[id].score += score;
+    this.players[id].score += score;
+    return this._debug("Updating player " + id + " score to " + this.players[id].score);
+  };
+
+  MyWorld.prototype._debug = function() {
+    var args;
+    args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+    return console.log.apply(console, ["[MyWorld]"].concat(__slice.call(args)));
   };
 
   return MyWorld;
@@ -98,7 +108,8 @@ console.log("Main done.");
 },{"./simult_sim/client.coffee":3,"./simult_sim/client_message_factory.coffee":4,"./simult_sim/game_event_factory.coffee":6,"./simult_sim/simulation.coffee":7,"./simult_sim/simulation_event_factory.coffee":8,"./simult_sim/simulation_state_factory.coffee":10,"./simult_sim/simulation_state_serializer.coffee":11,"./simult_sim/socket_io_client_adapter.coffee":12,"./simult_sim/turn_calculator.coffee":13,"./simult_sim/user_event_serializer.coffee":14,"./simult_sim/world_base.coffee":15}],3:[function(require,module,exports){
 var Client, EventEmitter,
   __hasProp = {}.hasOwnProperty,
-  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+  __slice = [].slice;
 
 EventEmitter = require('./event_emitter.coffee');
 
@@ -117,40 +128,35 @@ Client = (function(_super) {
     this.preGameEventsBuffer = [];
     this.adapter.on('ClientAdapter::Disconnected', (function(_this) {
       return function() {
+        _this._debug("rec'd ClientAdapter::Disconnected");
         return _this.gameEventsBuffer.push(_this.gameEventFactory.disconnected());
       };
     })(this));
     this.adapter.on('ClientAdapter::Packet', (function(_this) {
       return function(data) {
-        var f, gameEvent, i, msg, protoTurn, simEvent, turnEvents, _i, _j, _len, _ref, _ref1;
+        var f, gameEvent, msg, protoTurn, simEvent, _i, _len, _ref;
         msg = _this._unpackServerMessage(data);
+        _this._debug("rec'd ClientAdapter::Packet", msg);
         switch (msg.type) {
-          case 'ServerMsg::IdAssigned':
+          case 'ServerMessage::IdAssigned':
             return _this.clientId = msg.ourId;
-          case 'ServerMsg::Event':
+          case 'ServerMessage::Event':
             return _this.simulationEventsBuffer.push(_this.simulationEventFactory.event(msg.sourcePlayerId, msg.data));
-          case 'ServerMsg::PlayerJoined':
+          case 'ServerMessage::PlayerJoined':
             return _this.simulationEventsBuffer.push(_this.simulationEventFactory.playerJoined(msg.playerId));
-          case 'ServerMsg::PlayerLeft':
+          case 'ServerMessage::PlayerLeft':
             return _this.simulationEventsBuffer.push(_this.simulationEventFactory.playerLeft(msg.playerId));
-          case 'ServerMsg::TurnComplete':
-            turnEvents = [];
-            for (i = _i = 0, _ref = _this.simulationEventsBuffer.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
-              turnEvents.push(_this.simulationEventsBuffer.shift());
-            }
-            f = function(checksum) {
-              return _this._sendMessage(_this.clientMessageFactory.turnFinished(msg.turnNumber, checksum));
-            };
-            return _this.gameEventsBuffer.push(_this.gameEventFactory.turnComplete(msg.turnNumber, turnEvents, f));
-          case 'ServerMsg::StartGame':
+          case 'ServerMessage::TurnComplete':
+            return _this._turnComplete(msg);
+          case 'ServerMessage::StartGame':
             _this.gameStarted = true;
-            _ref1 = _this._unpackProtoTurn(msg.protoTurn);
-            for (_j = 0, _len = _ref1.length; _j < _len; _j++) {
-              simEvent = _ref1[_j];
+            _ref = _this._unpackProtoTurn(msg.protoTurn);
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+              simEvent = _ref[_i];
               _this.simulationEventsBuffer.push(simEvent);
             }
             return _this.preGameEventsBuffer.push(_this.gameEventFactory.startGame(msg.yourId, msg.turnPeriod, msg.currentTurn, msg.gamestate));
-          case 'ServerMsg::GamestateRequest':
+          case 'ServerMessage::GamestateRequest':
             protoTurn = _this._packProtoTurn(_this.simulationEventsBuffer);
             f = function(gamestate) {
               return _this._sendMessage(_this.clientMessageFactory.gamestate(msg.forPlayerId, protoTurn, gamestate));
@@ -189,6 +195,20 @@ Client = (function(_super) {
     return this.adapter.disconnect();
   };
 
+  Client.prototype._turnComplete = function(msg) {
+    var f, i, turnEvents, _i, _ref;
+    turnEvents = [];
+    for (i = _i = 0, _ref = this.simulationEventsBuffer.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
+      turnEvents.push(this.simulationEventsBuffer.shift());
+    }
+    f = (function(_this) {
+      return function(checksum) {
+        return _this._sendMessage(_this.clientMessageFactory.turnFinished(msg.turnNumber, checksum));
+      };
+    })(this);
+    return this.gameEventsBuffer.push(this.gameEventFactory.turnComplete(msg.turnNumber, turnEvents, f));
+  };
+
   Client.prototype._unpackServerMessage = function(data) {
     return data;
   };
@@ -206,7 +226,14 @@ Client = (function(_super) {
   };
 
   Client.prototype._sendMessage = function(msg) {
+    this._debug("_sendMessage", msg);
     return this.adapter.send(this._packClientMessage(msg));
+  };
+
+  Client.prototype._debug = function() {
+    var args;
+    args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+    return console.log.apply(console, ["[Client]"].concat(__slice.call(args)));
   };
 
   return Client;
@@ -372,6 +399,7 @@ Simulation = (function() {
   };
 
   Simulation.prototype.sendEvent = function(event) {
+    this._debug("sendEvent", event);
     return this.client.sendEvent(this.userEventSerializer.pack(event));
   };
 
@@ -421,6 +449,12 @@ Simulation = (function() {
         }
       };
     })(this));
+  };
+
+  Simulation.prototype._debug = function() {
+    var args;
+    args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+    return console.log("[Simulation]", args);
   };
 
   return Simulation;
@@ -544,7 +578,8 @@ module.exports = SimulationStateSerializer;
 },{}],12:[function(require,module,exports){
 var EventEmitter, SocketIOClientAdapter,
   __hasProp = {}.hasOwnProperty,
-  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+  __slice = [].slice;
 
 EventEmitter = require('./event_emitter.coffee');
 
@@ -555,22 +590,33 @@ SocketIOClientAdapter = (function(_super) {
     this.socket = socket;
     this.socket.on('data', (function(_this) {
       return function(data) {
+        _this._debug("rec'd data: ", data);
         return _this.emit('ClientAdapter::Packet', data);
       };
     })(this));
     this.socket.on('disconnect', (function(_this) {
       return function() {
+        _this._debug("rec'd disconnect");
         return _this.emit('ClientAdapter::Disconnected');
       };
     })(this));
   }
 
   SocketIOClientAdapter.prototype.send = function(data) {
+    this._debug("send", data);
     return this.socket.emit('data', data);
   };
 
   SocketIOClientAdapter.prototype.disconnect = function() {
     return this.socket.disconnect();
+  };
+
+  SocketIOClientAdapter.prototype._debug = function() {
+    var args;
+    args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+    if (this._debugOn) {
+      return console.log.apply(console, ["[SocketIOClientAdapter]"].concat(__slice.call(args)));
+    }
   };
 
   return SocketIOClientAdapter;

@@ -26,6 +26,7 @@ class Simulation
       args: args
 
   sendEvent: (event) ->
+    @_debug "sendEvent", event
     @client.sendEvent @userEventSerializer.pack(event)
 
   # Accepts t (time) in partial seconds (floating point, eg, 1.75 seconds)
@@ -71,5 +72,7 @@ class Simulation
           @simState = null
           # TODO: notify users of the simulation that we've been disconnected
 
+  _debug: (args...) ->
+    console.log "[Simulation]", args
 
 module.exports = Simulation

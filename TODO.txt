@@ -1,6 +1,5 @@
-
-WorldProxy / WorldProxyEvent
-  NO METHOD MISSING TRICKS!
+Spec:
+  server.coffee
 
 
 Actual Serialization!

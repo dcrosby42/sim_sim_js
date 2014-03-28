@@ -35,14 +35,19 @@ class MyWorld extends WorldBase
 
   playerJoined: (id) ->
     @players[id] = {score: 0}
+    @_debug "Player #{id} JOINED"
 
   playerLeft: (id) ->
     delete @players[id]
+    @_debug "Player #{id} LEFT"
 
   step: (dt) ->
 
   addScore: (id, score) ->
     @players[id].score += score
+    @_debug "Updating player #{id} score to #{@players[id].score}"
+
+  _debug: (args...) -> console.log "[MyWorld]", args...
 
 
 simulationStateFactory = new SimulationStateFactory(
