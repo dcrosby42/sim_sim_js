@@ -11,7 +11,7 @@ class Simulation
       @userEventSerializer
     ) ->
     @lastTurnTime = 0
-    @_debugOn = true
+    @_debugOn = false
 
   worldState: ->
     @simState.world if @simState

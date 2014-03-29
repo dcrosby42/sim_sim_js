@@ -2,6 +2,7 @@
 class Server
   constructor: (@adapter, @turnManager, @serverMessageFactory) ->
     #@logfmt = require('logfmt')
+    @_debugOn = false
 
     m = @serverMessageFactory
     @turnManager.on 'turn_ended', (currentTurn) =>
@@ -63,6 +64,6 @@ class Server
       return @adapter.clientids[1]
 
   _debug: (args...) ->
-    console.log ">>> [Server]", args...
+    console.log ">>> [Server]", args... if @_debugOn
 
 module.exports = Server

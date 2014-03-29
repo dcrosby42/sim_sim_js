@@ -100,25 +100,27 @@ window.startSimulation = function() {
   simulation = new Simulation(client, turnCalculator, simulationStateFactory, simulationStateSerializer, userEventSerializer);
   window.simulation = simulation;
   window.scoreButtonClicked = function() {
-    return console.log(simulation.worldProxy('addScore', 1));
+    return simulation.worldProxy('addScore', 1);
   };
-  period = 250;
+  period = 20;
   beginTime = new Date().getTime();
   return webTimer = setInterval((function() {
-    var elapsedSeconds, id, now, player, sb, str, _ref;
+    var elapsedSeconds, id, now, player, sb, str, world, _ref;
     now = new Date().getTime();
     elapsedSeconds = (now - beginTime) / 1000.0;
     simulation.update(elapsedSeconds);
-    sb = window.document.getElementById('score-board');
-    if (sb) {
-      str = '';
-      _ref = simulation.worldState().players;
-      for (id in _ref) {
-        player = _ref[id];
-        str += "Player " + id + " score: " + player.score + "\n";
+    if (world = simulation.worldState()) {
+      sb = window.document.getElementById('score-board');
+      if (sb) {
+        str = '';
+        _ref = world.players;
+        for (id in _ref) {
+          player = _ref[id];
+          str += "Player " + id + " score: " + player.score + "\n";
+        }
+        str += "Time: " + (new Date().getTime()) + "\n";
+        return sb.textContent = str;
       }
-      str += "Time: " + (new Date().getTime()) + "\n";
-      return sb.textContent = str;
     }
   }), period);
 };
@@ -140,7 +142,7 @@ Client = (function(_super) {
     this.gameEventFactory = gameEventFactory;
     this.clientMessageFactory = clientMessageFactory;
     this.simulationEventFactory = simulationEventFactory;
-    this._debugOn = true;
+    this._debugOn = false;
     this.gameStarted = false;
     this.clientId = null;
     this.simulationEventsBuffer = [];
@@ -398,7 +400,7 @@ Simulation = (function() {
     this.simulationStateSerializer = simulationStateSerializer;
     this.userEventSerializer = userEventSerializer;
     this.lastTurnTime = 0;
-    this._debugOn = true;
+    this._debugOn = false;
   }
 
   Simulation.prototype.worldState = function() {
@@ -614,8 +616,7 @@ module.exports = SimulationStateSerializer;
 },{"./simulation_state.coffee":9}],12:[function(require,module,exports){
 var EventEmitter, SocketIOClientAdapter,
   __hasProp = {}.hasOwnProperty,
-  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
-  __slice = [].slice;
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
 EventEmitter = require('./event_emitter.coffee');
 
@@ -626,33 +627,22 @@ SocketIOClientAdapter = (function(_super) {
     this.socket = socket;
     this.socket.on('data', (function(_this) {
       return function(data) {
-        _this._debug("rec'd data: ", data);
         return _this.emit('ClientAdapter::Packet', data);
       };
     })(this));
     this.socket.on('disconnect', (function(_this) {
       return function() {
-        _this._debug("rec'd disconnect");
         return _this.emit('ClientAdapter::Disconnected');
       };
     })(this));
   }
 
   SocketIOClientAdapter.prototype.send = function(data) {
-    this._debug("send", data);
     return this.socket.emit('data', data);
   };
 
   SocketIOClientAdapter.prototype.disconnect = function() {
     return this.socket.disconnect();
-  };
-
-  SocketIOClientAdapter.prototype._debug = function() {
-    var args;
-    args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-    if (this._debugOn) {
-      return console.log.apply(console, ["[SocketIOClientAdapter]"].concat(__slice.call(args)));
-    }
   };
 
   return SocketIOClientAdapter;
@@ -747,10 +737,6 @@ WorldBase = (function() {
 
   WorldBase.prototype.toAttributes = function() {
     throw new Error("Please implement WorldBase#toAttributes");
-  };
-
-  WorldBase.fromAttributes = function() {
-    throw new Error("Please implement WorldBase.fromAttributes");
   };
 
   return WorldBase;

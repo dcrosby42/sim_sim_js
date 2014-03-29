@@ -2,7 +2,7 @@ EventEmitter = require './event_emitter.coffee'
 
 class Client extends EventEmitter
   constructor: (@adapter,@gameEventFactory, @clientMessageFactory, @simulationEventFactory) ->
-    @_debugOn = true
+    @_debugOn = false
     @gameStarted = false
     @clientId = null
     @simulationEventsBuffer = []

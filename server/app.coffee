@@ -6,12 +6,12 @@ logfmt     = require('logfmt')
 express    = require('express')
 expressApp = express()
 httpServer = require('http').createServer(expressApp)
-socketIO   = require('socket.io').listen(httpServer)
+socketIO   = require('socket.io').listen(httpServer, log: false)
 simultSim  = require('./simult_sim')
 
 simultSimServer = simultSim.create.socketIOServer(
   socketIO: socketIO
-  period: 1000
+  period: 100
 )
 
 expressApp.use logfmt.requestLogger()

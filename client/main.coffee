@@ -81,22 +81,23 @@ window.startSimulation = ->
   window.simulation = simulation
 
   window.scoreButtonClicked = ->
-    console.log simulation.worldProxy('addScore', 1)
+    simulation.worldProxy('addScore', 1)
 
-  period = 250
+  period = 20
   beginTime = new Date().getTime()
   webTimer = setInterval (->
     now = new Date().getTime()
     elapsedSeconds = (now - beginTime)/1000.0
     simulation.update( elapsedSeconds )
-    sb = window.document.getElementById('score-board')
-    if sb
-      str = ''
-      for id,player of simulation.worldState().players
-        str += "Player #{id} score: #{player.score}\n"
-      str += "Time: #{new Date().getTime()}\n"
+    if world = simulation.worldState()
+      sb = window.document.getElementById('score-board')
+      if sb
+        str = ''
+        for id,player of world.players
+          str += "Player #{id} score: #{player.score}\n"
+        str += "Time: #{new Date().getTime()}\n"
 
-      sb.textContent = str
+        sb.textContent = str
 
     ), period
 

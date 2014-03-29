@@ -11,8 +11,4 @@ class WorldBase
   toAttributes: ->
     throw new Error("Please implement WorldBase#toAttributes")
 
-  @fromAttributes: ->
-    throw new Error("Please implement WorldBase.fromAttributes")
-
-
 module.exports = WorldBase
