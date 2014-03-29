@@ -22,7 +22,7 @@ describe 'ClientMessageFactory', ->
       type: 'ClientMsg::Gamestate'
       forPlayerId: 'player1'
       protoTurn: 'the proto turn'
-      gamestate: 'the game'
+      data: 'the game'
 
   it 'should create an Event message structure', ->
     msg = subject.event("daters")

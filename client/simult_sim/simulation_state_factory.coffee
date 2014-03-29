@@ -8,15 +8,13 @@ class SimulationStateFactory
       @defaults.timePerTurn
       @defaults.stepsPerTurn
       0 # step
-      @_defaultWorld()
+      @createWorld(@defaults.worldAttributes)
     )
 
-  _defaultWorld: ->
-    world = null
-    if @defaults.world
-      world = @defaults.world
-    else if @defaults.createWorld
-      world = @defaults.createWorld()
-    return world
+  createWorld: (atts={}) ->
+    if @defaults.worldClass
+      return new @defaults.worldClass(atts)
+    else
+      throw new Error("SimulationStateFactory needs a worldClass")
 
 module.exports = SimulationStateFactory

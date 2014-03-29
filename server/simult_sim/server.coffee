@@ -36,7 +36,7 @@ class Server
           @_debug 'ClientMsg::Event, broadcasting', m.event(id,msg.data)
           @_broadcast m.event(id, msg.data)
         when 'ClientMsg::Gamestate'
-          @_debug "ClientMsg::Gamestate for #{msg.forPlayerId}"
+          @_debug "ClientMsg::Gamestate rec'd", msg
           @_send msg.forPlayerId, m.startGame(msg.forPlayerId, @turnManager.period, @turnManager.current, msg.protoTurn, msg.data)
 
         when 'ClientMsg::TurnFinished'

@@ -11,7 +11,7 @@ class ClientMessageFactory
       type: 'ClientMsg::Gamestate'
       forPlayerId: forPlayerId
       protoTurn: protoTurn
-      gamestate: gamestate
+      data: gamestate
     }
 
   event: (data) ->

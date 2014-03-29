@@ -1,4 +1,4 @@
-# EventEmitter = require './event_emitter'
+require '../helpers'
 
 class SimulationState
   constructor: (@timePerTurn,

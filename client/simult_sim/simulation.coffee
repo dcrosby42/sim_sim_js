@@ -11,6 +11,7 @@ class Simulation
       @userEventSerializer
     ) ->
     @lastTurnTime = 0
+    @_debugOn = true
 
   worldState: ->
     @simState.world if @simState
@@ -38,6 +39,7 @@ class Simulation
     @client.update (gameEvent) =>
       switch gameEvent.type
         when 'GameEvent::TurnComplete'
+          @_debug "GameEvent::TurnComplete.... simState is",@simState
           @turnCalculator.advanceTurn @simState
           @lastTurnTime = t
           for simEvent in gameEvent.events
@@ -62,6 +64,7 @@ class Simulation
         when 'GameEvent::StartGame'
           @ourId = gameEvent.ourId
           @simState = @simulationStateSerializer.unpackSimulationState(gameEvent.gamestate)
+          @_debug "GameEvent::StartGame.... gameEvent is", gameEvent ,"simState is",@simState
 
         when 'GameEvent::GamestateRequest'
           @simState ||= @simulationStateFactory.createSimulationState()
@@ -73,6 +76,6 @@ class Simulation
           # TODO: notify users of the simulation that we've been disconnected
 
   _debug: (args...) ->
-    console.log "[Simulation]", args
+    console.log "[Simulation]", args if @_debugOn
 
 module.exports = Simulation

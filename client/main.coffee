@@ -26,11 +26,11 @@ client = new Client(
 )
 
 turnCalculator = new TurnCalculator()
-simulationStateSerializer = new SimulationStateSerializer()
 userEventSerializer = new UserEventSerializer()
 
 class MyWorld extends WorldBase
   constructor: ->
+    @_debugOn = true
     @players = {}
 
   playerJoined: (id) ->
@@ -47,7 +47,7 @@ class MyWorld extends WorldBase
     @players[id].score += score
     @_debug "Updating player #{id} score to #{@players[id].score}"
 
-  _debug: (args...) -> console.log "[MyWorld]", args...
+  _debug: (args...) -> console.log "[MyWorld]", args... if @_debugOn
 
 
 simulationStateFactory = new SimulationStateFactory(
@@ -56,6 +56,8 @@ simulationStateFactory = new SimulationStateFactory(
   step: 0
   createWorld: -> new MyWorld()
 )
+
+simulationStateSerializer = new SimulationStateSerializer(simulationStateFactory)
 
 simulation = new Simulation(
   client
@@ -66,15 +68,13 @@ simulation = new Simulation(
 )
 
 
-
-# adapter.on 'ClientAdapter::Packet', (data) ->
-#   console.log "ClientAdapter::Packet", data
-#   
-# adapter.on 'ClientAdapter::Disconnect', ->
-#   console.log "ClientAdapter::Disconnect", data
-#   console.log "DISCONNECTED!"
-
 window.simulation = simulation
-console.log window.simulation
 
-console.log "Main done."
+period = 20
+beginTime = new Date().getTime()
+webTimer = setInterval (->
+  now = new Date().getTime()
+  elapsed = now - beginTime
+  simulation.update(elapsed)), period
+
+window.stop = -> clearInterval(webTimer)

@@ -8,4 +8,11 @@ class WorldBase
   step: (dt) ->
     throw new Error("Please implement WorldBase#step")
 
+  toAttributes: ->
+    throw new Error("Please implement WorldBase#toAttributes")
+
+  @fromAttributes: ->
+    throw new Error("Please implement WorldBase.fromAttributes")
+
+
 module.exports = WorldBase

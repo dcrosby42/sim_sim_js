@@ -2,6 +2,7 @@ EventEmitter = require './event_emitter.coffee'
 
 class Client extends EventEmitter
   constructor: (@adapter,@gameEventFactory, @clientMessageFactory, @simulationEventFactory) ->
+    @_debugOn = true
     @gameStarted = false
     @clientId = null
     @simulationEventsBuffer = []
@@ -32,6 +33,7 @@ class Client extends EventEmitter
           @_turnComplete msg
 
         when 'ServerMessage::StartGame'
+          @_debug 'ServerMessage::StartGame', msg
           @gameStarted = true
           for simEvent in @_unpackProtoTurn(msg.protoTurn)
             @simulationEventsBuffer.push simEvent
@@ -99,7 +101,7 @@ class Client extends EventEmitter
     @adapter.send @_packClientMessage(msg)
 
   _debug: (args...) ->
-    console.log "[Client]", args...
+    console.log "[Client]", args... if @_debugOn
 
 
 module.exports = Client
