@@ -8,10 +8,10 @@ class SimulationStateFactory
       @defaults.timePerTurn
       @defaults.stepsPerTurn
       0 # step
-      @createWorld(@defaults.worldAttributes)
+      @createWorld(@defaults.worldData || null)
     )
 
-  createWorld: (atts={}) ->
+  createWorld: (atts) ->
     if @defaults.worldClass
       return new @defaults.worldClass(atts)
     else

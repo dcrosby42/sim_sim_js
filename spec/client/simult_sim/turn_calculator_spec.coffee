@@ -1,6 +1,7 @@
 TurnCalculator = require '../../../client/simult_sim/turn_calculator.coffee'
 SimulationStateFactory = require '../../../client/simult_sim/simulation_state_factory.coffee'
 require '../../../client/helpers.coffee'
+TestWorld = require './test_world'
 
 describe 'TurnCalculator', ->
   subject = null
@@ -11,15 +12,11 @@ describe 'TurnCalculator', ->
   beforeEach ->
     subject = new TurnCalculator()
   
-    world =
-      name: "Stub world"
-      stepCalls: []
-      step: (dt) -> @stepCalls.push(dt)
-
     stateFactory = new SimulationStateFactory(
-      world: world
       timePerTurn: 0.1
       stepsPerTurn: 6
+      worldClass: TestWorld
+      worldData: {someProperty:'the daater'}
     )
     simState = stateFactory.createSimulationState()
 
@@ -29,7 +26,7 @@ describe 'TurnCalculator', ->
     describe 'when no steps have been taken', ->
       it "steps through the whole turn", ->
         subject.advanceTurn(simState)
-        expect(world.stepCalls).toEqual [
+        expect(simState.world.stepCalls).toEqual [
           expectedDT
           expectedDT
           expectedDT
@@ -42,7 +39,7 @@ describe 'TurnCalculator', ->
       it 'executes remaining steps for the current turn and resets the step counter', ->
         simState.step = 3
         subject.advanceTurn(simState)
-        expect(world.stepCalls).toEqual [
+        expect(simState.world.stepCalls).toEqual [
           expectedDT
           expectedDT
           expectedDT
@@ -52,11 +49,11 @@ describe 'TurnCalculator', ->
       it 'executes no further steps and resets the step counter', ->
         simState.step = 6
         subject.advanceTurn(simState)
-        expect(world.stepCalls).toEqual []
+        expect(simState.world.stepCalls).toEqual []
 
         simState.step = 20
         subject.advanceTurn(simState)
-        expect(world.stepCalls).toEqual []
+        expect(simState.world.stepCalls).toEqual []
 
   describe 'stepUntilTurnTime', ->
     it 'determines how many steps are needed to make it to the given turn time, and executes those steps', ->
@@ -70,7 +67,7 @@ describe 'TurnCalculator', ->
         { startingStep: 2, turnTime: 0.06, expectedSteps: 2 }
         { startingStep: 5, turnTime: 0.1, expectedSteps: 1 }
       ]
-        world.stepCalls = []
+        simState.world.stepCalls = []
         simState.step = x.startingStep
         subject.stepUntilTurnTime(simState, x.turnTime)
-        expect(world.stepCalls.length).toEqual x.expectedSteps
+        expect(simState.world.stepCalls.length).toEqual x.expectedSteps
