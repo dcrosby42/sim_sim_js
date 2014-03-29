@@ -9,7 +9,10 @@ httpServer = require('http').createServer(expressApp)
 socketIO   = require('socket.io').listen(httpServer)
 simultSim  = require('./simult_sim')
 
-simultSimServer = simultSim.create.socketIOServer(socketIO: socketIO)
+simultSimServer = simultSim.create.socketIOServer(
+  socketIO: socketIO
+  period: 1000
+)
 
 expressApp.use logfmt.requestLogger()
 expressApp.use express.static("#{appRoot}/public")

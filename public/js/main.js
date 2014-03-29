@@ -6,7 +6,7 @@ Number.prototype.fixed = function(n) {
 
 
 },{}],2:[function(require,module,exports){
-var Client, ClientMessageFactory, GameEventFactory, MyWorld, Simulation, SimulationEventFactory, SimulationStateFactory, SimulationStateSerializer, SocketIOClientAdapter, TurnCalculator, UserEventSerializer, WorldBase, adapter, beginTime, client, clientMessageFactory, gameEventFactory, period, simulation, simulationEventFactory, simulationStateFactory, simulationStateSerializer, socket, turnCalculator, userEventSerializer, webTimer,
+var Client, ClientMessageFactory, GameEventFactory, Simulation, SimulationEventFactory, SimulationStateFactory, SimulationStateSerializer, SocketIOClientAdapter, TurnCalculator, UserEventSerializer, WorldBase,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
   __slice = [].slice;
@@ -33,99 +33,97 @@ Simulation = require('./simult_sim/simulation.coffee');
 
 WorldBase = require('./simult_sim/world_base.coffee');
 
-socket = io.connect(location.toString());
+window.startSimulation = function() {
+  var MyWorld, adapter, beginTime, client, clientMessageFactory, gameEventFactory, period, simulation, simulationEventFactory, simulationStateFactory, simulationStateSerializer, socket, turnCalculator, userEventSerializer, webTimer;
+  socket = io.connect(location.toString());
+  adapter = new SocketIOClientAdapter(socket);
+  gameEventFactory = new GameEventFactory();
+  clientMessageFactory = new ClientMessageFactory();
+  simulationEventFactory = new SimulationEventFactory();
+  client = new Client(adapter, gameEventFactory, clientMessageFactory, simulationEventFactory);
+  turnCalculator = new TurnCalculator();
+  userEventSerializer = new UserEventSerializer();
+  MyWorld = (function(_super) {
+    __extends(MyWorld, _super);
 
-adapter = new SocketIOClientAdapter(socket);
-
-gameEventFactory = new GameEventFactory();
-
-clientMessageFactory = new ClientMessageFactory();
-
-simulationEventFactory = new SimulationEventFactory();
-
-client = new Client(adapter, gameEventFactory, clientMessageFactory, simulationEventFactory);
-
-turnCalculator = new TurnCalculator();
-
-userEventSerializer = new UserEventSerializer();
-
-MyWorld = (function(_super) {
-  __extends(MyWorld, _super);
-
-  function MyWorld() {
-    this._debugOn = true;
-    this.players = {};
-  }
-
-  MyWorld.fromAttributes = function(data) {
-    var w;
-    w = new MyWorld();
-    return w.players = data.players;
-  };
-
-  MyWorld.prototype.playerJoined = function(id) {
-    this.players[id] = {
-      score: 0
-    };
-    return this._debug("Player " + id + " JOINED");
-  };
-
-  MyWorld.prototype.playerLeft = function(id) {
-    delete this.players[id];
-    return this._debug("Player " + id + " LEFT");
-  };
-
-  MyWorld.prototype.step = function(dt) {};
-
-  MyWorld.prototype.addScore = function(id, score) {
-    this.players[id].score += score;
-    return this._debug("Updating player " + id + " score to " + this.players[id].score);
-  };
-
-  MyWorld.prototype.toAttributes = function() {
-    return {
-      players: this.players
-    };
-  };
-
-  MyWorld.prototype._debug = function() {
-    var args;
-    args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-    if (this._debugOn) {
-      return console.log.apply(console, ["[MyWorld]"].concat(__slice.call(args)));
+    function MyWorld() {
+      this._debugOn = true;
+      this.players = {};
     }
+
+    MyWorld.fromAttributes = function(data) {
+      var w;
+      w = new MyWorld();
+      return w.players = data.players;
+    };
+
+    MyWorld.prototype.playerJoined = function(id) {
+      this.players[id] = {
+        score: 0
+      };
+      return this._debug("Player " + id + " JOINED");
+    };
+
+    MyWorld.prototype.playerLeft = function(id) {
+      delete this.players[id];
+      return this._debug("Player " + id + " LEFT");
+    };
+
+    MyWorld.prototype.step = function(dt) {};
+
+    MyWorld.prototype.addScore = function(id, score) {
+      this.players[id].score += score;
+      return this._debug("UPDATED player " + id + " score to " + this.players[id].score);
+    };
+
+    MyWorld.prototype.toAttributes = function() {
+      return {
+        players: this.players
+      };
+    };
+
+    MyWorld.prototype._debug = function() {
+      var args;
+      args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      if (this._debugOn) {
+        return console.log.apply(console, ["[MyWorld]"].concat(__slice.call(args)));
+      }
+    };
+
+    return MyWorld;
+
+  })(WorldBase);
+  simulationStateFactory = new SimulationStateFactory({
+    timePerTurn: 1.0,
+    stepsPerTurn: 6,
+    step: 0,
+    worldClass: MyWorld
+  });
+  simulationStateSerializer = new SimulationStateSerializer(simulationStateFactory);
+  simulation = new Simulation(client, turnCalculator, simulationStateFactory, simulationStateSerializer, userEventSerializer);
+  window.simulation = simulation;
+  window.scoreButtonClicked = function() {
+    return console.log(simulation.worldProxy('addScore', 1));
   };
-
-  return MyWorld;
-
-})(WorldBase);
-
-simulationStateFactory = new SimulationStateFactory({
-  timePerTurn: 0.1,
-  stepsPerTurn: 6,
-  step: 0,
-  worldClass: MyWorld
-});
-
-simulationStateSerializer = new SimulationStateSerializer(simulationStateFactory);
-
-simulation = new Simulation(client, turnCalculator, simulationStateFactory, simulationStateSerializer, userEventSerializer);
-
-window.simulation = simulation;
-
-period = 20;
-
-beginTime = new Date().getTime();
-
-webTimer = setInterval((function() {
-  var elapsed, now;
-  now = new Date().getTime();
-  elapsed = now - beginTime;
-  return simulation.update(elapsed);
-}), period);
-
-window.stop = function() {
-  return clearInterval(webTimer);
+  period = 250;
+  beginTime = new Date().getTime();
+  return webTimer = setInterval((function() {
+    var elapsedSeconds, id, now, player, sb, str, _ref;
+    now = new Date().getTime();
+    elapsedSeconds = (now - beginTime) / 1000.0;
+    simulation.update(elapsedSeconds);
+    sb = window.document.getElementById('score-board');
+    if (sb) {
+      str = '';
+      _ref = simulation.worldState().players;
+      for (id in _ref) {
+        player = _ref[id];
+        str += "Player " + id + " score: " + player.score + "\n";
+      }
+      str += "Time: " + (new Date().getTime()) + "\n";
+      return sb.textContent = str;
+    }
+  }), period);
 };
 
 
@@ -432,10 +430,10 @@ Simulation = (function() {
     return this.client.sendEvent(this.userEventSerializer.pack(event));
   };
 
-  Simulation.prototype.update = function(t) {
+  Simulation.prototype.update = function(seconds) {
     var elapsedTurnTime;
     if (this.simState) {
-      elapsedTurnTime = (t - this.lastTurnTime).fixed();
+      elapsedTurnTime = (seconds - this.lastTurnTime).fixed();
       this.turnCalculator.stepUntilTurnTime(this.simState, elapsedTurnTime);
     }
     return this.client.update((function(_this) {
@@ -445,7 +443,7 @@ Simulation = (function() {
           case 'GameEvent::TurnComplete':
             _this._debug("GameEvent::TurnComplete.... simState is", _this.simState);
             _this.turnCalculator.advanceTurn(_this.simState);
-            _this.lastTurnTime = t;
+            _this.lastTurnTime = seconds;
             _ref = gameEvent.events;
             for (_i = 0, _len = _ref.length; _i < _len; _i++) {
               simEvent = _ref[_i];

@@ -30,10 +30,10 @@ class Simulation
     @_debug "sendEvent", event
     @client.sendEvent @userEventSerializer.pack(event)
 
-  # Accepts t (time) in partial seconds (floating point, eg, 1.75 seconds)
-  update: (t) ->
+  # Accepts seconds (time) in partial seconds (floating point, eg, 1.75 seconds)
+  update: (seconds) ->
     if @simState
-      elapsedTurnTime = (t - @lastTurnTime).fixed()
+      elapsedTurnTime = (seconds - @lastTurnTime).fixed()
       @turnCalculator.stepUntilTurnTime @simState, elapsedTurnTime
 
     @client.update (gameEvent) =>
@@ -41,7 +41,7 @@ class Simulation
         when 'GameEvent::TurnComplete'
           @_debug "GameEvent::TurnComplete.... simState is",@simState
           @turnCalculator.advanceTurn @simState
-          @lastTurnTime = t
+          @lastTurnTime = seconds
           for simEvent in gameEvent.events
             switch simEvent.type
 

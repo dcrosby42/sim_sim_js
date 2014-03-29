@@ -4,7 +4,11 @@
 </head>
 <body>
   <h1>SimSimJS Test</h1>
-
+  <button id="score-button" onclick="startSimulation()">START</button>
+  <div>
+    <pre id="score-board">(initial state)</pre>
+    <button id="score-button" onclick="scoreButtonClicked()">Score a Point</button>
+  </div>
 <script src="/socket.io/socket.io.js"></script>
 <script src="js/main.js"></script>
 </body>

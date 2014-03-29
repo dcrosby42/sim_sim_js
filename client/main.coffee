@@ -12,78 +12,93 @@ UserEventSerializer = require './simult_sim/user_event_serializer.coffee'
 Simulation = require './simult_sim/simulation.coffee'
 WorldBase = require './simult_sim/world_base.coffee'
 
+window.startSimulation = ->
 
-socket = io.connect(location.toString())
-adapter = new SocketIOClientAdapter(socket)
-gameEventFactory = new GameEventFactory()
-clientMessageFactory = new ClientMessageFactory()
-simulationEventFactory = new SimulationEventFactory()
-client = new Client(
-  adapter
-  gameEventFactory
-  clientMessageFactory
-  simulationEventFactory
-)
+  socket = io.connect(location.toString())
+  adapter = new SocketIOClientAdapter(socket)
+  gameEventFactory = new GameEventFactory()
+  clientMessageFactory = new ClientMessageFactory()
+  simulationEventFactory = new SimulationEventFactory()
+  client = new Client(
+    adapter
+    gameEventFactory
+    clientMessageFactory
+    simulationEventFactory
+  )
 
-turnCalculator = new TurnCalculator()
-userEventSerializer = new UserEventSerializer()
+  turnCalculator = new TurnCalculator()
+  userEventSerializer = new UserEventSerializer()
 
-class MyWorld extends WorldBase
-  constructor: ->
-    @_debugOn = true
-    @players = {}
+  class MyWorld extends WorldBase
+    constructor: ->
+      @_debugOn = true
+      @players = {}
 
-  @fromAttributes: (data) ->
-    w = new MyWorld()
-    w.players = data.players
+    @fromAttributes: (data) ->
+      w = new MyWorld()
+      w.players = data.players
 
-  playerJoined: (id) ->
-    @players[id] = {score: 0}
-    @_debug "Player #{id} JOINED"
+    playerJoined: (id) ->
+      @players[id] = {score: 0}
+      @_debug "Player #{id} JOINED"
 
-  playerLeft: (id) ->
-    delete @players[id]
-    @_debug "Player #{id} LEFT"
+    playerLeft: (id) ->
+      delete @players[id]
+      @_debug "Player #{id} LEFT"
 
-  step: (dt) ->
+    step: (dt) ->
 
-  addScore: (id, score) ->
-    @players[id].score += score
-    @_debug "Updating player #{id} score to #{@players[id].score}"
+    addScore: (id, score) ->
+      @players[id].score += score
+      @_debug "UPDATED player #{id} score to #{@players[id].score}"
 
-  toAttributes: ->
-    {
-      players: @players
-    }
+    toAttributes: ->
+      {
+        players: @players
+      }
 
-  _debug: (args...) -> console.log "[MyWorld]", args... if @_debugOn
-
-
-simulationStateFactory = new SimulationStateFactory(
-  timePerTurn: 0.1
-  stepsPerTurn: 6
-  step: 0
-  worldClass: MyWorld
-)
-
-simulationStateSerializer = new SimulationStateSerializer(simulationStateFactory)
-
-simulation = new Simulation(
-  client
-  turnCalculator
-  simulationStateFactory
-  simulationStateSerializer
-  userEventSerializer
-)
+    _debug: (args...) -> console.log "[MyWorld]", args... if @_debugOn
 
 
-window.simulation = simulation
+  simulationStateFactory = new SimulationStateFactory(
+    timePerTurn: 1.0
+    stepsPerTurn: 6
+    step: 0
+    worldClass: MyWorld
+  )
 
-period = 20
-beginTime = new Date().getTime()
-webTimer = setInterval (->
-  now = new Date().getTime()
-  elapsed = now - beginTime
-  simulation.update(elapsed)), period
+  simulationStateSerializer = new SimulationStateSerializer(simulationStateFactory)
 
-window.stop = -> clearInterval(webTimer)
+  simulation = new Simulation(
+    client
+    turnCalculator
+    simulationStateFactory
+    simulationStateSerializer
+    userEventSerializer
+  )
+
+  window.simulation = simulation
+
+  window.scoreButtonClicked = ->
+    console.log simulation.worldProxy('addScore', 1)
+
+  period = 250
+  beginTime = new Date().getTime()
+  webTimer = setInterval (->
+    now = new Date().getTime()
+    elapsedSeconds = (now - beginTime)/1000.0
+    simulation.update( elapsedSeconds )
+    sb = window.document.getElementById('score-board')
+    if sb
+      str = ''
+      for id,player of simulation.worldState().players
+        str += "Player #{id} score: #{player.score}\n"
+      str += "Time: #{new Date().getTime()}\n"
+
+      sb.textContent = str
+
+    ), period
+
+  # window.stop = -> clearInterval(webTimer)
+
+# startSimulation()
