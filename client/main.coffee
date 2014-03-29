@@ -33,6 +33,10 @@ class MyWorld extends WorldBase
     @_debugOn = true
     @players = {}
 
+  @fromAttributes: (data) ->
+    w = new MyWorld()
+    w.players = data.players
+
   playerJoined: (id) ->
     @players[id] = {score: 0}
     @_debug "Player #{id} JOINED"
@@ -47,6 +51,11 @@ class MyWorld extends WorldBase
     @players[id].score += score
     @_debug "Updating player #{id} score to #{@players[id].score}"
 
+  toAttributes: ->
+    {
+      players: @players
+    }
+
   _debug: (args...) -> console.log "[MyWorld]", args... if @_debugOn
 
 
@@ -54,7 +63,7 @@ simulationStateFactory = new SimulationStateFactory(
   timePerTurn: 0.1
   stepsPerTurn: 6
   step: 0
-  createWorld: -> new MyWorld()
+  worldClass: MyWorld
 )
 
 simulationStateSerializer = new SimulationStateSerializer(simulationStateFactory)

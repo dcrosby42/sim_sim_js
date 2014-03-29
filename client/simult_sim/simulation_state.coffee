@@ -1,4 +1,4 @@
-require '../helpers'
+require '../helpers.coffee'
 
 class SimulationState
   constructor: (@timePerTurn,
