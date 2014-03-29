@@ -30,13 +30,14 @@ window.startSimulation = ->
   userEventSerializer = new UserEventSerializer()
 
   class MyWorld extends WorldBase
-    constructor: ->
+    constructor: (atts={}) ->
       @_debugOn = true
-      @players = {}
+      @players = atts.players || {}
 
-    @fromAttributes: (data) ->
-      w = new MyWorld()
-      w.players = data.players
+    # @fromAttributes: (data) ->
+    #   w = new MyWorld()
+    #   w.players = data.players
+    #   w
 
     playerJoined: (id) ->
       @players[id] = {score: 0}

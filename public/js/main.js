@@ -46,16 +46,13 @@ window.startSimulation = function() {
   MyWorld = (function(_super) {
     __extends(MyWorld, _super);
 
-    function MyWorld() {
+    function MyWorld(atts) {
+      if (atts == null) {
+        atts = {};
+      }
       this._debugOn = true;
-      this.players = {};
+      this.players = atts.players || {};
     }
-
-    MyWorld.fromAttributes = function(data) {
-      var w;
-      w = new MyWorld();
-      return w.players = data.players;
-    };
 
     MyWorld.prototype.playerJoined = function(id) {
       this.players[id] = {
@@ -172,7 +169,6 @@ Client = (function(_super) {
           case 'ServerMessage::TurnComplete':
             return _this._turnComplete(msg);
           case 'ServerMessage::StartGame':
-            _this._debug('ServerMessage::StartGame', msg);
             _this.gameStarted = true;
             _ref = _this._unpackProtoTurn(msg.protoTurn);
             for (_i = 0, _len = _ref.length; _i < _len; _i++) {

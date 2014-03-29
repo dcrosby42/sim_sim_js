@@ -33,14 +33,11 @@ class Server
       msg = @_unpackClientMessage(data)
       switch msg.type
         when 'ClientMsg::Event'
-          @_debug 'ClientMsg::Event, broadcasting', m.event(id,msg.data)
           @_broadcast m.event(id, msg.data)
         when 'ClientMsg::Gamestate'
-          @_debug "ClientMsg::Gamestate rec'd", msg
           @_send msg.forPlayerId, m.startGame(msg.forPlayerId, @turnManager.period, @turnManager.current, msg.protoTurn, msg.data)
 
         when 'ClientMsg::TurnFinished'
-          @_debug "ClientMsg::TurnFinished"
           _ = null
           # TODO: do something toward checksu verification here
 
@@ -48,6 +45,7 @@ class Server
     @adapter.send id, @_packServerMessage(msg)
 
   _broadcast: (msg) ->
+
     @adapter.broadcast @_packServerMessage(msg)
 
   _unpackClientMessage: (msg) ->

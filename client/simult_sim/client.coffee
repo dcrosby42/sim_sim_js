@@ -33,7 +33,6 @@ class Client extends EventEmitter
           @_turnComplete msg
 
         when 'ServerMessage::StartGame'
-          @_debug 'ServerMessage::StartGame', msg
           @gameStarted = true
           for simEvent in @_unpackProtoTurn(msg.protoTurn)
             @simulationEventsBuffer.push simEvent
