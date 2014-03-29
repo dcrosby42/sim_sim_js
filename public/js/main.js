@@ -157,7 +157,7 @@ Client = (function(_super) {
     })(this));
     this.adapter.on('ClientAdapter::Packet', (function(_this) {
       return function(data) {
-        var f, gameEvent, msg, protoTurn, simEvent, _i, _len, _ref;
+        var copyOfSimEvents, f, gameEvent, msg, protoTurn, simEvent, _i, _len, _ref;
         msg = _this._unpackServerMessage(data);
         _this._debug("rec'd ClientAdapter::Packet", msg);
         switch (msg.type) {
@@ -181,7 +181,8 @@ Client = (function(_super) {
             }
             return _this.preGameEventsBuffer.push(_this.gameEventFactory.startGame(msg.yourId, msg.turnPeriod, msg.currentTurn, msg.gamestate));
           case 'ServerMessage::GamestateRequest':
-            protoTurn = _this._packProtoTurn(_this.simulationEventsBuffer);
+            copyOfSimEvents = _this.simulationEventsBuffer.slice(0);
+            protoTurn = _this._packProtoTurn(copyOfSimEvents);
             f = function(gamestate) {
               return _this._sendMessage(_this.clientMessageFactory.gamestate(msg.forPlayerId, protoTurn, gamestate));
             };

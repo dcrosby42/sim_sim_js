@@ -210,10 +210,14 @@ describe 'Client', ->
       testGamestateRequest = ->
         # generate some simulation events
         emitServerMessagePacket 'Event', sourcePlayerId: 'p1', data: 'event1 data'
-        emitServerMessagePacket 'PlayerJoined', playerId: 'p2'
+        emitServerMessagePacket 'Event', sourcePlayerId: 'p2', data: 'event2 daters'
         # initiate the state request
         emitServerMessagePacket 'GamestateRequest', forPlayerId: requestingPlayerId
+        # Regression test: make sure that events arriving AFTER GamestateRequest DON'T add to proto turn:
+        #  (this is how it goes down in real life for the first player)
+        emitServerMessagePacket 'PlayerJoined', playerId: 'p2'
 
+        # GO!
         subject.update updateBlock
 
         # At this point, the 'ask' for gamestate has been emitted from the Client:
@@ -229,7 +233,7 @@ describe 'Client', ->
           requestingPlayerId,
           packProtoTurn([
             simulationEventFactory.event 'p1', 'event1 data'
-            simulationEventFactory.playerJoined 'p2'
+            simulationEventFactory.event 'p2', 'event2 daters'
           ]),
           gamestate)
 

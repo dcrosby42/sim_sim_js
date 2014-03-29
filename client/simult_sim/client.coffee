@@ -41,7 +41,9 @@ class Client extends EventEmitter
           @preGameEventsBuffer.push @gameEventFactory.startGame(msg.yourId, msg.turnPeriod, msg.currentTurn, msg.gamestate)
 
         when 'ServerMessage::GamestateRequest'
-          protoTurn = @_packProtoTurn(@simulationEventsBuffer)
+          copyOfSimEvents = @simulationEventsBuffer.slice(0)
+          protoTurn = @_packProtoTurn(copyOfSimEvents)
+          # protoTurn = @_packProtoTurn(@simulationEventsBuffer)
           f = (gamestate) =>
             @_sendMessage @clientMessageFactory.gamestate(
               msg.forPlayerId,
