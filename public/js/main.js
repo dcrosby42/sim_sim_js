@@ -6,105 +6,22 @@ Number.prototype.fixed = function(n) {
 
 
 },{}],2:[function(require,module,exports){
-var Client, ClientMessageFactory, GameEventFactory, Simulation, SimulationEventFactory, SimulationStateFactory, SimulationStateSerializer, SocketIOClientAdapter, TurnCalculator, UserEventSerializer, WorldBase,
-  __hasProp = {}.hasOwnProperty,
-  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
-  __slice = [].slice;
+var $SIMSIM, MyWorld, startSimulation;
 
-SocketIOClientAdapter = require('./simult_sim/socket_io_client_adapter.coffee');
+$SIMSIM = require('./simult_sim/index.coffee');
 
-GameEventFactory = require('./simult_sim/game_event_factory.coffee');
+MyWorld = require('./my_world.coffee');
 
-ClientMessageFactory = require('./simult_sim/client_message_factory.coffee');
-
-SimulationEventFactory = require('./simult_sim/simulation_event_factory.coffee');
-
-Client = require('./simult_sim/client.coffee');
-
-TurnCalculator = require('./simult_sim/turn_calculator.coffee');
-
-SimulationStateFactory = require('./simult_sim/simulation_state_factory.coffee');
-
-SimulationStateSerializer = require('./simult_sim/simulation_state_serializer.coffee');
-
-UserEventSerializer = require('./simult_sim/user_event_serializer.coffee');
-
-Simulation = require('./simult_sim/simulation.coffee');
-
-WorldBase = require('./simult_sim/world_base.coffee');
-
-window.startSimulation = function() {
-  var MyWorld, adapter, beginTime, client, clientMessageFactory, gameEventFactory, period, simulation, simulationEventFactory, simulationStateFactory, simulationStateSerializer, socket, turnCalculator, userEventSerializer, webTimer;
-  socket = io.connect(location.toString());
-  adapter = new SocketIOClientAdapter(socket);
-  gameEventFactory = new GameEventFactory();
-  clientMessageFactory = new ClientMessageFactory();
-  simulationEventFactory = new SimulationEventFactory();
-  client = new Client(adapter, gameEventFactory, clientMessageFactory, simulationEventFactory);
-  turnCalculator = new TurnCalculator();
-  userEventSerializer = new UserEventSerializer();
-  MyWorld = (function(_super) {
-    __extends(MyWorld, _super);
-
-    function MyWorld(atts) {
-      if (atts == null) {
-        atts = {};
-      }
-      this._debugOn = true;
-      this.players = atts.players || {};
-    }
-
-    MyWorld.prototype.playerJoined = function(id) {
-      this.players[id] = {
-        score: 0
-      };
-      return this._debug("Player " + id + " JOINED");
-    };
-
-    MyWorld.prototype.playerLeft = function(id) {
-      delete this.players[id];
-      return this._debug("Player " + id + " LEFT");
-    };
-
-    MyWorld.prototype.step = function(dt) {};
-
-    MyWorld.prototype.addScore = function(id, score) {
-      this.players[id].score += score;
-      return this._debug("UPDATED player " + id + " score to " + this.players[id].score);
-    };
-
-    MyWorld.prototype.toAttributes = function() {
-      return {
-        players: this.players
-      };
-    };
-
-    MyWorld.prototype._debug = function() {
-      var args;
-      args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      if (this._debugOn) {
-        return console.log.apply(console, ["[MyWorld]"].concat(__slice.call(args)));
-      }
-    };
-
-    return MyWorld;
-
-  })(WorldBase);
-  simulationStateFactory = new SimulationStateFactory({
-    timePerTurn: 1.0,
-    stepsPerTurn: 6,
-    step: 0,
+startSimulation = function() {
+  var beginTime, period, simulation, url, webTimer;
+  url = location.toString();
+  simulation = $SIMSIM.create.socketIOSimulation({
+    socketIO: io.connect(url),
     worldClass: MyWorld
   });
-  simulationStateSerializer = new SimulationStateSerializer(simulationStateFactory);
-  simulation = new Simulation(client, turnCalculator, simulationStateFactory, simulationStateSerializer, userEventSerializer);
-  window.simulation = simulation;
-  window.scoreButtonClicked = function() {
-    return simulation.worldProxy('addScore', 1);
-  };
   period = 20;
   beginTime = new Date().getTime();
-  return webTimer = setInterval((function() {
+  webTimer = setInterval((function() {
     var elapsedSeconds, id, now, player, sb, str, world, _ref;
     now = new Date().getTime();
     elapsedSeconds = (now - beginTime) / 1000.0;
@@ -123,10 +40,75 @@ window.startSimulation = function() {
       }
     }
   }), period);
+  window.simulation = simulation;
+  return window.scoreButtonClicked = function() {
+    return simulation.worldProxy('addScore', 1);
+  };
 };
 
+window.startSimulation = startSimulation;
 
-},{"./simult_sim/client.coffee":3,"./simult_sim/client_message_factory.coffee":4,"./simult_sim/game_event_factory.coffee":6,"./simult_sim/simulation.coffee":7,"./simult_sim/simulation_event_factory.coffee":8,"./simult_sim/simulation_state_factory.coffee":10,"./simult_sim/simulation_state_serializer.coffee":11,"./simult_sim/socket_io_client_adapter.coffee":12,"./simult_sim/turn_calculator.coffee":13,"./simult_sim/user_event_serializer.coffee":14,"./simult_sim/world_base.coffee":15}],3:[function(require,module,exports){
+
+},{"./my_world.coffee":3,"./simult_sim/index.coffee":8}],3:[function(require,module,exports){
+var MyWorld, WorldBase,
+  __hasProp = {}.hasOwnProperty,
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+  __slice = [].slice;
+
+WorldBase = require('./simult_sim/world_base.coffee');
+
+MyWorld = (function(_super) {
+  __extends(MyWorld, _super);
+
+  function MyWorld(atts) {
+    if (atts == null) {
+      atts = {};
+    }
+    this._debugOn = true;
+    this.players = atts.players || {};
+  }
+
+  MyWorld.prototype.playerJoined = function(id) {
+    this.players[id] = {
+      score: 0
+    };
+    return this._debug("Player " + id + " JOINED");
+  };
+
+  MyWorld.prototype.playerLeft = function(id) {
+    delete this.players[id];
+    return this._debug("Player " + id + " LEFT");
+  };
+
+  MyWorld.prototype.step = function(dt) {};
+
+  MyWorld.prototype.addScore = function(id, score) {
+    this.players[id].score += score;
+    return this._debug("UPDATED player " + id + " score to " + this.players[id].score);
+  };
+
+  MyWorld.prototype.toAttributes = function() {
+    return {
+      players: this.players
+    };
+  };
+
+  MyWorld.prototype._debug = function() {
+    var args;
+    args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+    if (this._debugOn) {
+      return console.log.apply(console, ["[MyWorld]"].concat(__slice.call(args)));
+    }
+  };
+
+  return MyWorld;
+
+})(WorldBase);
+
+module.exports = MyWorld;
+
+
+},{"./simult_sim/world_base.coffee":17}],4:[function(require,module,exports){
 var Client, EventEmitter,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
@@ -268,7 +250,7 @@ Client = (function(_super) {
 module.exports = Client;
 
 
-},{"./event_emitter.coffee":5}],4:[function(require,module,exports){
+},{"./event_emitter.coffee":6}],5:[function(require,module,exports){
 var ClientMessageFactory;
 
 ClientMessageFactory = (function() {
@@ -305,7 +287,7 @@ ClientMessageFactory = (function() {
 module.exports = ClientMessageFactory;
 
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 var EventEmitter,
   __slice = [].slice;
 
@@ -341,7 +323,7 @@ EventEmitter = (function() {
 module.exports = EventEmitter;
 
 
-},{}],6:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 var GameEventFactory;
 
 GameEventFactory = (function() {
@@ -386,7 +368,68 @@ GameEventFactory = (function() {
 module.exports = GameEventFactory;
 
 
-},{}],7:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
+var createSimulation, createSimulationUsingSocketIO, createSocketIOClientAdapter;
+
+require('../helpers.coffee');
+
+createSimulation = function(opts) {
+  var Client, ClientMessageFactory, GameEventFactory, Simulation, SimulationEventFactory, SimulationStateFactory, SimulationStateSerializer, TurnCalculator, UserEventSerializer, client, clientMessageFactory, gameEventFactory, simulation, simulationEventFactory, simulationStateFactory, simulationStateSerializer, turnCalculator, userEventSerializer;
+  if (opts == null) {
+    opts = {};
+  }
+  if (!opts.adapter) {
+    throw new error("Cannot build simulation without network adapter, such as SocketIOClientAdapter");
+  }
+  if (!opts.worldClass) {
+    throw new Error("Cannot build simulation without worldClass, which must implement interface WorldBase");
+  }
+  GameEventFactory = require('./game_event_factory.coffee');
+  ClientMessageFactory = require('./client_message_factory.coffee');
+  SimulationEventFactory = require('./simulation_event_factory.coffee');
+  Client = require('./client.coffee');
+  TurnCalculator = require('./turn_calculator.coffee');
+  SimulationStateFactory = require('./simulation_state_factory.coffee');
+  SimulationStateSerializer = require('./simulation_state_serializer.coffee');
+  UserEventSerializer = require('./user_event_serializer.coffee');
+  Simulation = require('./simulation.coffee');
+  gameEventFactory = new GameEventFactory();
+  clientMessageFactory = new ClientMessageFactory();
+  simulationEventFactory = new SimulationEventFactory();
+  client = new Client(opts.adapter, gameEventFactory, clientMessageFactory, simulationEventFactory);
+  turnCalculator = new TurnCalculator();
+  userEventSerializer = new UserEventSerializer();
+  simulationStateFactory = new SimulationStateFactory({
+    timePerTurn: opts.timesPerTurn || 0.1,
+    stepsPerTurn: opts.stepsPerTurn || 6,
+    step: opts.step || 0,
+    worldClass: opts.worldClass
+  });
+  simulationStateSerializer = new SimulationStateSerializer(simulationStateFactory);
+  simulation = new Simulation(client, turnCalculator, simulationStateFactory, simulationStateSerializer, userEventSerializer);
+  return simulation;
+};
+
+createSocketIOClientAdapter = function(socketIO) {
+  var SocketIOClientAdapter;
+  SocketIOClientAdapter = require('./socket_io_client_adapter.coffee');
+  return new SocketIOClientAdapter(socketIO);
+};
+
+createSimulationUsingSocketIO = function(opts) {
+  if (opts == null) {
+    opts = {};
+  }
+  opts.adapter = createSocketIOClientAdapter(opts.socketIO);
+  return createSimulation(opts);
+};
+
+exports.create = {
+  socketIOSimulation: createSimulationUsingSocketIO
+};
+
+
+},{"../helpers.coffee":1,"./client.coffee":4,"./client_message_factory.coffee":5,"./game_event_factory.coffee":7,"./simulation.coffee":9,"./simulation_event_factory.coffee":10,"./simulation_state_factory.coffee":12,"./simulation_state_serializer.coffee":13,"./socket_io_client_adapter.coffee":14,"./turn_calculator.coffee":15,"./user_event_serializer.coffee":16}],9:[function(require,module,exports){
 var Simulation,
   __slice = [].slice;
 
@@ -494,7 +537,7 @@ Simulation = (function() {
 module.exports = Simulation;
 
 
-},{"../helpers.coffee":1}],8:[function(require,module,exports){
+},{"../helpers.coffee":1}],10:[function(require,module,exports){
 var SimulationEventFactory;
 
 SimulationEventFactory = (function() {
@@ -529,7 +572,7 @@ SimulationEventFactory = (function() {
 module.exports = SimulationEventFactory;
 
 
-},{}],9:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 var SimulationState;
 
 require('../helpers.coffee');
@@ -550,7 +593,7 @@ SimulationState = (function() {
 module.exports = SimulationState;
 
 
-},{"../helpers.coffee":1}],10:[function(require,module,exports){
+},{"../helpers.coffee":1}],12:[function(require,module,exports){
 var SimulationState, SimulationStateFactory;
 
 SimulationState = require('./simulation_state.coffee');
@@ -579,7 +622,7 @@ SimulationStateFactory = (function() {
 module.exports = SimulationStateFactory;
 
 
-},{"./simulation_state.coffee":9}],11:[function(require,module,exports){
+},{"./simulation_state.coffee":11}],13:[function(require,module,exports){
 var SimulationState, SimulationStateSerializer;
 
 SimulationState = require('./simulation_state.coffee');
@@ -613,7 +656,7 @@ SimulationStateSerializer = (function() {
 module.exports = SimulationStateSerializer;
 
 
-},{"./simulation_state.coffee":9}],12:[function(require,module,exports){
+},{"./simulation_state.coffee":11}],14:[function(require,module,exports){
 var EventEmitter, SocketIOClientAdapter,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
@@ -625,6 +668,9 @@ SocketIOClientAdapter = (function(_super) {
 
   function SocketIOClientAdapter(socket) {
     this.socket = socket;
+    if (!this.socket) {
+      throw new Error("A socket.io socket instance is required to build SockedIOClientAdapter");
+    }
     this.socket.on('data', (function(_this) {
       return function(data) {
         return _this.emit('ClientAdapter::Packet', data);
@@ -652,7 +698,7 @@ SocketIOClientAdapter = (function(_super) {
 module.exports = SocketIOClientAdapter;
 
 
-},{"./event_emitter.coffee":5}],13:[function(require,module,exports){
+},{"./event_emitter.coffee":6}],15:[function(require,module,exports){
 var TurnCalculator;
 
 require('../helpers.coffee');
@@ -692,7 +738,7 @@ TurnCalculator = (function() {
 module.exports = TurnCalculator;
 
 
-},{"../helpers.coffee":1}],14:[function(require,module,exports){
+},{"../helpers.coffee":1}],16:[function(require,module,exports){
 var UserEventSerializer;
 
 UserEventSerializer = (function() {
@@ -713,7 +759,7 @@ UserEventSerializer = (function() {
 module.exports = UserEventSerializer;
 
 
-},{}],15:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 var WorldBase;
 
 WorldBase = (function() {
