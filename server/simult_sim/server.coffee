@@ -16,7 +16,7 @@ class Server
       @_debug "  (selected player #{stateProviderId} to provide state to newcomer #{id})"
       #@logfmt.log {selectedOtherPlayer: stateProviderId}
       
-      if stateProviderId == id
+      if @adapter.clientCount() == 1
         @_debug "  (first player in is #{id}, starting turn manager)"
         # hacksie: id == stateProviderId implies we're the first player.
         # Start the turn manager
@@ -27,6 +27,9 @@ class Server
 
     @adapter.on 'Network::PeerDisconnected', (id) =>
       @_debug "Network::PeerDisconnected #{id}"
+      if @adapter.clientCount() == 0
+        @turnManager.stop()
+        @turnManager.reset()
       @_broadcast m.playerLeft(id)
 
     @adapter.on 'Network::PeerPacket', (id, data) =>
