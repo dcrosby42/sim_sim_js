@@ -1,11 +1,4 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-Number.prototype.fixed = function(n) {
-  n = n || 3;
-  return parseFloat(this.toFixed(n));
-};
-
-
-},{}],2:[function(require,module,exports){
 var $SIMSIM, MyWorld, startSimulation;
 
 $SIMSIM = require('./simult_sim/index.coffee');
@@ -14,7 +7,7 @@ MyWorld = require('./my_world.coffee');
 
 startSimulation = function() {
   var beginTime, period, simulation, url, webTimer;
-  url = location.toString();
+  url = "http://" + location.hostname + ":" + location.port;
   simulation = $SIMSIM.create.socketIOSimulation({
     socketIO: io.connect(url),
     worldClass: MyWorld
@@ -49,7 +42,14 @@ startSimulation = function() {
 window.startSimulation = startSimulation;
 
 
-},{"./my_world.coffee":3,"./simult_sim/index.coffee":8}],3:[function(require,module,exports){
+},{"./my_world.coffee":3,"./simult_sim/index.coffee":8}],2:[function(require,module,exports){
+Number.prototype.fixed = function(n) {
+  n = n || 3;
+  return parseFloat(this.toFixed(n));
+};
+
+
+},{}],3:[function(require,module,exports){
 var MyWorld, WorldBase,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
@@ -429,7 +429,7 @@ exports.create = {
 };
 
 
-},{"../helpers.coffee":1,"./client.coffee":4,"./client_message_factory.coffee":5,"./game_event_factory.coffee":7,"./simulation.coffee":9,"./simulation_event_factory.coffee":10,"./simulation_state_factory.coffee":12,"./simulation_state_serializer.coffee":13,"./socket_io_client_adapter.coffee":14,"./turn_calculator.coffee":15,"./user_event_serializer.coffee":16}],9:[function(require,module,exports){
+},{"../helpers.coffee":2,"./client.coffee":4,"./client_message_factory.coffee":5,"./game_event_factory.coffee":7,"./simulation.coffee":9,"./simulation_event_factory.coffee":10,"./simulation_state_factory.coffee":12,"./simulation_state_serializer.coffee":13,"./socket_io_client_adapter.coffee":14,"./turn_calculator.coffee":15,"./user_event_serializer.coffee":16}],9:[function(require,module,exports){
 var Simulation,
   __slice = [].slice;
 
@@ -537,7 +537,7 @@ Simulation = (function() {
 module.exports = Simulation;
 
 
-},{"../helpers.coffee":1}],10:[function(require,module,exports){
+},{"../helpers.coffee":2}],10:[function(require,module,exports){
 var SimulationEventFactory;
 
 SimulationEventFactory = (function() {
@@ -593,7 +593,7 @@ SimulationState = (function() {
 module.exports = SimulationState;
 
 
-},{"../helpers.coffee":1}],12:[function(require,module,exports){
+},{"../helpers.coffee":2}],12:[function(require,module,exports){
 var SimulationState, SimulationStateFactory;
 
 SimulationState = require('./simulation_state.coffee');
@@ -738,7 +738,7 @@ TurnCalculator = (function() {
 module.exports = TurnCalculator;
 
 
-},{"../helpers.coffee":1}],16:[function(require,module,exports){
+},{"../helpers.coffee":2}],16:[function(require,module,exports){
 var UserEventSerializer;
 
 UserEventSerializer = (function() {
@@ -792,4 +792,4 @@ WorldBase = (function() {
 module.exports = WorldBase;
 
 
-},{}]},{},[2])
+},{}]},{},[1])

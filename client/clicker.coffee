@@ -4,13 +4,11 @@ $SIMSIM = require './simult_sim/index.coffee'
 MyWorld = require './my_world.coffee'
 
 startSimulation = ->
-
   # Connect and create simulation
-  url = location.toString()
+  url = "http://#{location.hostname}:#{location.port}"
   simulation = $SIMSIM.create.socketIOSimulation
     socketIO: io.connect(url)
     worldClass: MyWorld
-
 
   period = 20
   beginTime = new Date().getTime()
@@ -25,7 +23,6 @@ startSimulation = ->
         for id,player of world.players
           str += "Player #{id} score: #{player.score}\n"
         str += "Time: #{new Date().getTime()}\n"
-
         sb.textContent = str
 
     ), period

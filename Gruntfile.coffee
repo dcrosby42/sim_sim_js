@@ -55,8 +55,8 @@ module.exports = (grunt) ->
         options:
           stdout: true
 
-      browserify:
-        command: "node_modules/.bin/browserify -t coffeeify client/main.coffee > public/js/main.js"
+      browserify_clicker:
+        command: "node_modules/.bin/browserify -t coffeeify client/clicker.coffee > public/js/clicker.js"
         options:
           failOnError: true
           stdout: true
@@ -74,7 +74,7 @@ module.exports = (grunt) ->
   grunt.registerTask 'test', 'shell:jasmine'
   grunt.registerTask 'wtest', 'shell:jasmine_watch'
 
-  grunt.registerTask 'bundle', 'shell:browserify'
+  grunt.registerTask 'bundle', ['shell:browserify_clicker']
 
     # uglify:
     #   options:
