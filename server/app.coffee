@@ -1,4 +1,4 @@
-port       = 4050
+port = Number(process.env.PORT || 4050)
 verbose    = true
 appRoot = "#{__dirname}/.."
 
