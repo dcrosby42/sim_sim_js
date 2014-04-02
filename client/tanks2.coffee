@@ -10,7 +10,8 @@ class Tanks2World extends WorldBase
     }
 
   playerJoined: (id) ->
-    tankId = @data.nextId
+    # Tanks are coming! Everyone gets a tank!
+    tankId = "T#{@data.nextId}"
     @data.nextId += 1
     @data.tanks[tankId] = {
       x: 200
@@ -27,17 +28,19 @@ class Tanks2World extends WorldBase
     console.log "Player #{id} JOINED, @data is now", @data
 
   playerLeft: (id) ->
+    # Cleanup tank
     if tankId = @data.players[id].tankId
       delete @data.tanks[tankId]
     delete @data.players[id]
     console.log "Player #{id} LEFT, @data is now", @data
 
   step: (dt) ->
+    # Update all the tanks:
     for tankId,info of @data.tanks
       if info.controls.forward
         info.speed = 200
       else
-        info.speed -= 4 if info.speed > 0
+        info.speed -= 8 if info.speed > 0
     
       if info.controls.left
         info.angle -= 4
@@ -74,33 +77,8 @@ class Tanks2World extends WorldBase
       tank.x = x
       tank.y = y
 
-
   _playerTank: (id) ->
     @data.tanks[@data.players[id].tankId]
-
-# class PlayerAdapter
-#   constructor: (player,@game) ->
-#     @shadow = null
-#     @tank = null
-#     @currentSpeed = 0
-# 
-#     #  The base of our tank
-#     @tank = game.add.sprite(player.x, player.y, 'tank', 'tank1')
-#     @tank.anchor.setTo(0.5, 0.5)
-#     @tank.animations.add('move', ['tank1', 'tank2', 'tank3', 'tank4', 'tank5', 'tank6'], 20, true)
-# 
-#     #  This will force it to decelerate and limit its speed
-#     game.physics.enable(tank, Phaser.Physics.ARCADE)
-#     @tank.body.drag.set(0.2)
-#     @tank.body.maxVelocity.setTo(400, 400)
-#     @tank.body.collideWorldBounds = true
-# 
-# 
-#     #  A shadow below our tank
-#     @shadow = $GLOBAL.game.add.sprite(0, 0, 'tank', 'shadow')
-#     @shadow.anchor.setTo(0.5, 0.5)
-# 
-#     @tank.bringToTop()
 
 
 $GLOBAL = {}
@@ -124,46 +102,36 @@ create = ->
     worldClass: Tanks2World
   $GLOBAL.beginTime = new Date().getTime()
 
-  # Resize our game world to be a 2000 x 2000 square
   $GLOBAL.game.world.setBounds(-1000, -1000, 2000, 2000)
-  # $GLOBAL.game.world.setBounds(0,0,800,600)
 
-  # Our tiled scrolling background
   $GLOBAL.land = $GLOBAL.game.add.tileSprite(0, 0, 800, 600, 'earth')
   $GLOBAL.land.fixedToCamera = true
 
   $GLOBAL.cursors = $GLOBAL.game.input.keyboard.createCursorKeys()
 
-  # $GLOBAL.game.camera.deadzone = new Phaser.Rectangle(150, 150, 500, 300)
-  # $GLOBAL.game.camera.focusOnXY(0, 0)
-
   $GLOBAL.localControls = {up:false,left:false,right:false,down:false}
 
+  # HOkay
+  # Phaser's update loop pauses when tab goes out of focus.
+  # We can't afford to miss SimSim messages so let's process in a different timer:
   setInterval(updateSimulation, 1000/30)
-
-# 
-# 
-# 
-#     #  A shadow below our tank
-#     @shadow = $GLOBAL.game.add.sprite(0, 0, 'tank', 'shadow')
-#     @shadow.anchor.setTo(0.5, 0.5)
-# 
 
 class Tank
   constructor: (@game,info) ->
     @tankSprite = @game.add.sprite(info.x,info.y, 'tank', 'tank1')
     @tankSprite.anchor.setTo(0.5, 0.5)
     @tankSprite.animations.add('move', ['tank1', 'tank2', 'tank3', 'tank4', 'tank5', 'tank6'], 20, true)
+
+    # TODO ?  This was making life very confusing and difficult ... amounts to ad-hoc client prediction and was busting our sync:
     # @game.physics.enable(@tankSprite, Phaser.Physics.ARCADE)
     # @tankSprite.body.drag.set(0.2)
     # @tankSprite.body.maxVelocity.setTo(400, 400)
     # @tankSprite.body.collideWorldBounds = true
+
     @tankSprite.bringToTop()
 
 createTank = (game,info) ->
   tank = new Tank(game,info)
-  # game.camera.follow(tank.tankSprite)
-  # game.camera.deadzone = new Phaser.Rectangle(150, 150, 500, 300)
   tank
 
 destroyTank = (game,tank) ->
@@ -177,53 +145,33 @@ updateSimulation = ->
 
 update = ->
 
-
-  tanks = $GLOBAL.clutch.tanks
   if world = $GLOBAL.simulation.worldState()
+    tanks = $GLOBAL.clutch.tanks # Our cache of Phaser game objects corresponding to tanks in world state
     for tankId,tankInfo of world.data.tanks
       tank = tanks[tankId]
       if !tank
-        tank = createTank($GLOBAL.game, tankInfo)
-        tanks[tankId] = tank
-        console.log "Created tank #{tankId}",tank
+        # A tank has appeared in the world state that we're not yet mirroring in Phaser.
+        tank = createTank($GLOBAL.game, tankInfo) # build new tank object
+        tanks[tankId] = tank # store in the 'clutch'
 
+      # Sync the Phaser game state based on current world state:
       tank.tankSprite.angle = tankInfo.angle
       tank.tankSprite.x = tankInfo.x
       tank.tankSprite.y = tankInfo.y
 
-      # if (tankInfo.speed > 0)
-      #   $GLOBAL.game.physics.arcade.velocityFromRotation(
-      #     tank.tankSprite.rotation
-      #     tankInfo.speed
-      #     tank.tankSprite.body.velocity
-      #   )
-
-      #
-      # SUPER NAUGHTY.
-      #  
-      # tankInfo.x = tank.tankSprite.x.fixed()
-      # tankInfo.y = tank.tankSprite.y.fixed()
-      # WUH?
-      # $GLOBAL.simulation.worldProxy 'setLoc', tank.tankSprite.x.fixed(), tank.tankSprite.y.fixed()
-
+    # Check for tanks that have DISAPPEARED from world state
     for tankId,tank of tanks
       if !world.data.tanks[tankId]
+        # a tank that we WERE tracking is gone, so get it gone from Phaser:
         destroyTank($GLOBAL.game,tank)
-      # console.log "Update tank #{tankId}"
 
-  
-  #  Position all the parts and align rotations
-  # shadow.x = tank.x
-  # shadow.y = tank.y
-  # shadow.rotation = tank.rotation
-        # update tank
-
-
-
-
+  #
+  # CONTROLLER INPUT EVENTS
+  #
   controls = $GLOBAL.localControls
   cursors = $GLOBAL.cursors
 
+  # If 'up' has gone up or come down, update the moveForward control
   up = cursors.up.isDown
   if up and !controls.up
     $GLOBAL.simulation.worldProxy 'moveForward', true
@@ -231,6 +179,7 @@ update = ->
     $GLOBAL.simulation.worldProxy 'moveForward', false
   controls.up = up
 
+  # If 'left' has gone up or come down, update the turnLeft control
   left = cursors.left.isDown
   if left and !controls.left
     $GLOBAL.simulation.worldProxy 'turnLeft', true
@@ -238,6 +187,7 @@ update = ->
     $GLOBAL.simulation.worldProxy 'turnLeft', false
   controls.left = left
 
+  # If 'right' has gone up or come down, update the turnRight control
   right = cursors.right.isDown
   if right and !controls.right
     $GLOBAL.simulation.worldProxy 'turnRight', true
@@ -245,21 +195,11 @@ update = ->
     $GLOBAL.simulation.worldProxy 'turnRight', false
   controls.right = right
 
+  # TODO Scroll the background:
+  # $GLOBAL.land.tilePosition.x = -($GLOBAL.game.camera.x)
+  # $GLOBAL.land.tilePosition.y = -($GLOBAL.game.camera.y)
 
-    # console.log "CURSOR LEFT"
-    #tank.angle -= 4
-  # else if ($GLOBAL.cursors.right.isDown)
-  #   turnRight = true
-  #   console.log "CURSOR RIGHT"
-    #tank.angle += 4
-  # TODO ??? HOW DO I GET _MY_ PLAYER ID / TANK????
-  # if turnLeft != simulation.worldState().
-
-
-  $GLOBAL.land.tilePosition.x = -($GLOBAL.game.camera.x)
-  $GLOBAL.land.tilePosition.y = -($GLOBAL.game.camera.y)
-
-render = ->
+render = -> # TODO something interesting here?
 
 $GLOBAL.game = new Phaser.Game(800, 600, Phaser.AUTO, 'phaser-example', { preload: preload, create: create, update: update, render: render })
 

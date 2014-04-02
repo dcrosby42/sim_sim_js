@@ -722,7 +722,7 @@ Tanks2World = (function(_super) {
 
   Tanks2World.prototype.playerJoined = function(id) {
     var tankId;
-    tankId = this.data.nextId;
+    tankId = "T" + this.data.nextId;
     this.data.nextId += 1;
     this.data.tanks[tankId] = {
       x: 200,
@@ -761,7 +761,7 @@ Tanks2World = (function(_super) {
         info.speed = 200;
       } else {
         if (info.speed > 0) {
-          info.speed -= 4;
+          info.speed -= 8;
         }
       }
       if (info.controls.left) {
@@ -892,8 +892,8 @@ updateSimulation = function() {
 
 update = function() {
   var controls, cursors, left, right, tank, tankId, tankInfo, tanks, up, world, _ref;
-  tanks = $GLOBAL.clutch.tanks;
   if (world = $GLOBAL.simulation.worldState()) {
+    tanks = $GLOBAL.clutch.tanks;
     _ref = world.data.tanks;
     for (tankId in _ref) {
       tankInfo = _ref[tankId];
@@ -901,7 +901,6 @@ update = function() {
       if (!tank) {
         tank = createTank($GLOBAL.game, tankInfo);
         tanks[tankId] = tank;
-        console.log("Created tank " + tankId, tank);
       }
       tank.tankSprite.angle = tankInfo.angle;
       tank.tankSprite.x = tankInfo.x;
@@ -939,9 +938,7 @@ update = function() {
   if (!right && controls.right) {
     $GLOBAL.simulation.worldProxy('turnRight', false);
   }
-  controls.right = right;
-  $GLOBAL.land.tilePosition.x = -$GLOBAL.game.camera.x;
-  return $GLOBAL.land.tilePosition.y = -$GLOBAL.game.camera.y;
+  return controls.right = right;
 };
 
 render = function() {};
