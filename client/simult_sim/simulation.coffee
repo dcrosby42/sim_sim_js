@@ -48,7 +48,10 @@ class Simulation
               when 'SimulationEvent::Event'
                 userEvent = @userEventSerializer.unpack(simEvent.data)
                 if userEvent.type == 'UserEvent::WorldProxyEvent'
-                  @simState.world[userEvent.method](simEvent.playerId, userEvent.args...)
+                  if @simState.world[userEvent.method]
+                    @simState.world[userEvent.method](simEvent.playerId, userEvent.args...)
+                  else
+                    throw new Error("WorldProxyEvent with method #{userEvent.method} CANNOT BE APPLIED because the world object doesn't have that method!")
                 else
                   @simState.world.incomingEvent(simEvent.playerId, userEvent)
 

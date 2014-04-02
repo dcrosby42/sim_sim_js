@@ -1,16 +1,16 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-var $SIMSIM, MyWorld, startSimulation;
+var $SIMSIM, ClickerWorld, startSimulation;
 
 $SIMSIM = require('./simult_sim/index.coffee');
 
-MyWorld = require('./my_world.coffee');
+ClickerWorld = require('./clicker_world.coffee');
 
 startSimulation = function() {
   var beginTime, period, simulation, url, webTimer;
   url = "http://" + location.hostname + ":" + location.port;
   simulation = $SIMSIM.create.socketIOSimulation({
     socketIO: io.connect(url),
-    worldClass: MyWorld
+    worldClass: ClickerWorld
   });
   period = 20;
   beginTime = new Date().getTime();
@@ -42,25 +42,18 @@ startSimulation = function() {
 window.startSimulation = startSimulation;
 
 
-},{"./my_world.coffee":3,"./simult_sim/index.coffee":8}],2:[function(require,module,exports){
-Number.prototype.fixed = function(n) {
-  n = n || 3;
-  return parseFloat(this.toFixed(n));
-};
-
-
-},{}],3:[function(require,module,exports){
-var MyWorld, WorldBase,
+},{"./clicker_world.coffee":2,"./simult_sim/index.coffee":8}],2:[function(require,module,exports){
+var ClickerWorld, WorldBase,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
   __slice = [].slice;
 
 WorldBase = require('./simult_sim/world_base.coffee');
 
-MyWorld = (function(_super) {
-  __extends(MyWorld, _super);
+ClickerWorld = (function(_super) {
+  __extends(ClickerWorld, _super);
 
-  function MyWorld(atts) {
+  function ClickerWorld(atts) {
     if (atts == null) {
       atts = {};
     }
@@ -68,32 +61,32 @@ MyWorld = (function(_super) {
     this.players = atts.players || {};
   }
 
-  MyWorld.prototype.playerJoined = function(id) {
+  ClickerWorld.prototype.playerJoined = function(id) {
     this.players[id] = {
       score: 0
     };
     return this._debug("Player " + id + " JOINED");
   };
 
-  MyWorld.prototype.playerLeft = function(id) {
+  ClickerWorld.prototype.playerLeft = function(id) {
     delete this.players[id];
     return this._debug("Player " + id + " LEFT");
   };
 
-  MyWorld.prototype.step = function(dt) {};
+  ClickerWorld.prototype.step = function(dt) {};
 
-  MyWorld.prototype.addScore = function(id, score) {
+  ClickerWorld.prototype.addScore = function(id, score) {
     this.players[id].score += score;
     return this._debug("UPDATED player " + id + " score to " + this.players[id].score);
   };
 
-  MyWorld.prototype.toAttributes = function() {
+  ClickerWorld.prototype.toAttributes = function() {
     return {
       players: this.players
     };
   };
 
-  MyWorld.prototype._debug = function() {
+  ClickerWorld.prototype._debug = function() {
     var args;
     args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
     if (this._debugOn) {
@@ -101,14 +94,21 @@ MyWorld = (function(_super) {
     }
   };
 
-  return MyWorld;
+  return ClickerWorld;
 
 })(WorldBase);
 
 module.exports = MyWorld;
 
 
-},{"./simult_sim/world_base.coffee":17}],4:[function(require,module,exports){
+},{"./simult_sim/world_base.coffee":17}],3:[function(require,module,exports){
+Number.prototype.fixed = function(n) {
+  n = n || 3;
+  return parseFloat(this.toFixed(n));
+};
+
+
+},{}],4:[function(require,module,exports){
 var Client, EventEmitter,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
@@ -429,7 +429,7 @@ exports.create = {
 };
 
 
-},{"../helpers.coffee":2,"./client.coffee":4,"./client_message_factory.coffee":5,"./game_event_factory.coffee":7,"./simulation.coffee":9,"./simulation_event_factory.coffee":10,"./simulation_state_factory.coffee":12,"./simulation_state_serializer.coffee":13,"./socket_io_client_adapter.coffee":14,"./turn_calculator.coffee":15,"./user_event_serializer.coffee":16}],9:[function(require,module,exports){
+},{"../helpers.coffee":3,"./client.coffee":4,"./client_message_factory.coffee":5,"./game_event_factory.coffee":7,"./simulation.coffee":9,"./simulation_event_factory.coffee":10,"./simulation_state_factory.coffee":12,"./simulation_state_serializer.coffee":13,"./socket_io_client_adapter.coffee":14,"./turn_calculator.coffee":15,"./user_event_serializer.coffee":16}],9:[function(require,module,exports){
 var Simulation,
   __slice = [].slice;
 
@@ -493,7 +493,11 @@ Simulation = (function() {
                 case 'SimulationEvent::Event':
                   userEvent = _this.userEventSerializer.unpack(simEvent.data);
                   if (userEvent.type === 'UserEvent::WorldProxyEvent') {
-                    (_ref1 = _this.simState.world)[userEvent.method].apply(_ref1, [simEvent.playerId].concat(__slice.call(userEvent.args)));
+                    if (_this.simState.world[userEvent.method]) {
+                      (_ref1 = _this.simState.world)[userEvent.method].apply(_ref1, [simEvent.playerId].concat(__slice.call(userEvent.args)));
+                    } else {
+                      throw new Error("WorldProxyEvent with method " + userEvent.method + " CANNOT BE APPLIED because the world object doesn't have that method!");
+                    }
                   } else {
                     _this.simState.world.incomingEvent(simEvent.playerId, userEvent);
                   }
@@ -537,7 +541,7 @@ Simulation = (function() {
 module.exports = Simulation;
 
 
-},{"../helpers.coffee":2}],10:[function(require,module,exports){
+},{"../helpers.coffee":3}],10:[function(require,module,exports){
 var SimulationEventFactory;
 
 SimulationEventFactory = (function() {
@@ -593,7 +597,7 @@ SimulationState = (function() {
 module.exports = SimulationState;
 
 
-},{"../helpers.coffee":2}],12:[function(require,module,exports){
+},{"../helpers.coffee":3}],12:[function(require,module,exports){
 var SimulationState, SimulationStateFactory;
 
 SimulationState = require('./simulation_state.coffee');
@@ -738,7 +742,7 @@ TurnCalculator = (function() {
 module.exports = TurnCalculator;
 
 
-},{"../helpers.coffee":2}],16:[function(require,module,exports){
+},{"../helpers.coffee":3}],16:[function(require,module,exports){
 var UserEventSerializer;
 
 UserEventSerializer = (function() {

@@ -1,12 +1,12 @@
 WorldBase = require './simult_sim/world_base.coffee'
 
-class MyWorld extends WorldBase
+class ClickerWorld extends WorldBase
   constructor: (atts={}) ->
     @_debugOn = true
     @players = atts.players || {}
 
   # @fromAttributes: (data) ->
-  #   w = new MyWorld()
+  #   w = new ClickerWorld()
   #   w.players = data.players
   #   w
 

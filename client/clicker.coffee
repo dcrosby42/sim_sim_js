@@ -1,14 +1,14 @@
 
 $SIMSIM = require './simult_sim/index.coffee'
 
-MyWorld = require './my_world.coffee'
+ClickerWorld = require './clicker_world.coffee'
 
 startSimulation = ->
   # Connect and create simulation
   url = "http://#{location.hostname}:#{location.port}"
   simulation = $SIMSIM.create.socketIOSimulation
     socketIO: io.connect(url)
-    worldClass: MyWorld
+    worldClass: ClickerWorld
 
   period = 20
   beginTime = new Date().getTime()
