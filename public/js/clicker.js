@@ -140,7 +140,9 @@ Client = (function(_super) {
       return function(data) {
         var copyOfSimEvents, f, gameEvent, msg, protoTurn, simEvent, _i, _len, _ref;
         msg = _this._unpackServerMessage(data);
-        _this._debug("rec'd ClientAdapter::Packet", msg);
+        if (msg.type !== 'ServerMessage::TurnComplete') {
+          _this._debug("rec'd ClientAdapter::Packet", msg);
+        }
         switch (msg.type) {
           case 'ServerMessage::IdAssigned':
             return _this.clientId = msg.ourId;
@@ -231,7 +233,9 @@ Client = (function(_super) {
   };
 
   Client.prototype._sendMessage = function(msg) {
-    this._debug("_sendMessage", msg);
+    if (msg.type !== 'ClientMsg::TurnFinished') {
+      this._debug("_sendMessage", msg);
+    }
     return this.adapter.send(this._packClientMessage(msg));
   };
 

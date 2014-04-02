@@ -37,7 +37,9 @@ Client = (function(_super) {
       return function(data) {
         var copyOfSimEvents, f, gameEvent, msg, protoTurn, simEvent, _i, _len, _ref;
         msg = _this._unpackServerMessage(data);
-        _this._debug("rec'd ClientAdapter::Packet", msg);
+        if (msg.type !== 'ServerMessage::TurnComplete') {
+          _this._debug("rec'd ClientAdapter::Packet", msg);
+        }
         switch (msg.type) {
           case 'ServerMessage::IdAssigned':
             return _this.clientId = msg.ourId;
@@ -128,7 +130,9 @@ Client = (function(_super) {
   };
 
   Client.prototype._sendMessage = function(msg) {
-    this._debug("_sendMessage", msg);
+    if (msg.type !== 'ClientMsg::TurnFinished') {
+      this._debug("_sendMessage", msg);
+    }
     return this.adapter.send(this._packClientMessage(msg));
   };
 
@@ -694,7 +698,7 @@ module.exports = WorldBase;
 
 
 },{}],16:[function(require,module,exports){
-var $GLOBAL, $SIMSIM, Tank, Tanks2World, WorldBase, create, createTank, preload, render, update,
+var $GLOBAL, $SIMSIM, Tank, Tanks2World, WorldBase, create, createTank, destroyTank, preload, render, update, updateSimulation,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -731,10 +735,11 @@ Tanks2World = (function(_super) {
         forward: false
       }
     };
-    return this.data.players[id] = {
+    this.data.players[id] = {
       score: 0,
       tankId: tankId
     };
+    return console.log("Player " + id + " JOINED, @data is now", this.data);
   };
 
   Tanks2World.prototype.playerLeft = function(id) {
@@ -742,10 +747,35 @@ Tanks2World = (function(_super) {
     if (tankId = this.data.players[id].tankId) {
       delete this.data.tanks[tankId];
     }
-    return delete this.data.players[id];
+    delete this.data.players[id];
+    return console.log("Player " + id + " LEFT, @data is now", this.data);
   };
 
-  Tanks2World.prototype.step = function(dt) {};
+  Tanks2World.prototype.step = function(dt) {
+    var info, r, tankId, _ref, _results;
+    _ref = this.data.tanks;
+    _results = [];
+    for (tankId in _ref) {
+      info = _ref[tankId];
+      if (info.controls.forward) {
+        info.speed = 200;
+      } else {
+        if (info.speed > 0) {
+          info.speed -= 4;
+        }
+      }
+      if (info.controls.left) {
+        info.angle -= 4;
+      }
+      if (info.controls.right) {
+        info.angle += 4;
+      }
+      r = info.angle * Math.PI / 180.0;
+      info.x += dt * info.speed * Math.cos(r);
+      _results.push(info.y += dt * info.speed * Math.sin(r));
+    }
+    return _results;
+  };
 
   Tanks2World.prototype.toAttributes = function() {
     return this.data;
@@ -753,7 +783,6 @@ Tanks2World = (function(_super) {
 
   Tanks2World.prototype.moveForward = function(id, active) {
     var tank;
-    console.log("moveForward " + id + " -> " + active, this.data);
     if (tank = this._playerTank(id)) {
       return tank.controls.forward = active;
     }
@@ -761,7 +790,6 @@ Tanks2World = (function(_super) {
 
   Tanks2World.prototype.turnLeft = function(id, active) {
     var tank;
-    console.log("turnLeft " + id + " -> " + active, this.data);
     if (tank = this._playerTank(id)) {
       return tank.controls.left = active;
     }
@@ -769,9 +797,16 @@ Tanks2World = (function(_super) {
 
   Tanks2World.prototype.turnRight = function(id, active) {
     var tank;
-    console.log("turnRight " + id + " -> " + active, this.data);
     if (tank = this._playerTank(id)) {
       return tank.controls.right = active;
+    }
+  };
+
+  Tanks2World.prototype.setLoc = function(id, x, y) {
+    var tank;
+    if (tank = this._playerTank(id)) {
+      tank.x = x;
+      return tank.y = y;
     }
   };
 
@@ -816,27 +851,22 @@ create = function() {
   $GLOBAL.land = $GLOBAL.game.add.tileSprite(0, 0, 800, 600, 'earth');
   $GLOBAL.land.fixedToCamera = true;
   $GLOBAL.cursors = $GLOBAL.game.input.keyboard.createCursorKeys();
-  return $GLOBAL.localControls = {
+  $GLOBAL.localControls = {
     up: false,
     left: false,
     right: false,
     down: false
   };
+  return setInterval(updateSimulation, 1000 / 30);
 };
 
 Tank = (function() {
   function Tank(game, info) {
     this.game = game;
-    console.log(info);
     this.tankSprite = this.game.add.sprite(info.x, info.y, 'tank', 'tank1');
     this.tankSprite.anchor.setTo(0.5, 0.5);
     this.tankSprite.animations.add('move', ['tank1', 'tank2', 'tank3', 'tank4', 'tank5', 'tank6'], 20, true);
-    this.game.physics.enable(this.tankSprite, Phaser.Physics.ARCADE);
-    this.tankSprite.body.drag.set(0.2);
-    this.tankSprite.body.maxVelocity.setTo(400, 400);
-    this.tankSprite.body.collideWorldBounds = true;
     this.tankSprite.bringToTop();
-    this.currentSpeed = info.speed;
   }
 
   return Tank;
@@ -846,16 +876,22 @@ Tank = (function() {
 createTank = function(game, info) {
   var tank;
   tank = new Tank(game, info);
-  game.camera.follow(tank.tankSprite);
-  game.camera.deadzone = new Phaser.Rectangle(150, 150, 500, 300);
   return tank;
 };
 
-update = function() {
-  var controls, cursors, elapsedSeconds, left, now, right, tank, tankId, tankInfo, tanks, up, world, _ref;
+destroyTank = function(game, tank) {
+  return tank.tankSprite.kill();
+};
+
+updateSimulation = function() {
+  var elapsedSeconds, now;
   now = new Date().getTime();
   elapsedSeconds = (now - $GLOBAL.beginTime) / 1000.0;
-  $GLOBAL.simulation.update(elapsedSeconds);
+  return $GLOBAL.simulation.update(elapsedSeconds);
+};
+
+update = function() {
+  var controls, cursors, left, right, tank, tankId, tankInfo, tanks, up, world, _ref;
   tanks = $GLOBAL.clutch.tanks;
   if (world = $GLOBAL.simulation.worldState()) {
     _ref = world.data.tanks;
@@ -867,20 +903,14 @@ update = function() {
         tanks[tankId] = tank;
         console.log("Created tank " + tankId, tank);
       }
-      if (tankInfo.controls.forward) {
-        console.log("Setting speed to 300");
-        tank.currentSpeed = 300;
-      } else {
-        tank.currentSpeed -= 4;
-      }
-      if (tankInfo.controls.left) {
-        tank.tankSprite.angle -= 4;
-      }
-      if (tankInfo.controls.right) {
-        tank.tankSprite.angle += 4;
-      }
-      if (tank.currentSpeed > 0) {
-        $GLOBAL.game.physics.arcade.velocityFromRotation(tank.tankSprite.rotation, tank.currentSpeed, tank.tankSprite.body.velocity);
+      tank.tankSprite.angle = tankInfo.angle;
+      tank.tankSprite.x = tankInfo.x;
+      tank.tankSprite.y = tankInfo.y;
+    }
+    for (tankId in tanks) {
+      tank = tanks[tankId];
+      if (!world.data.tanks[tankId]) {
+        destroyTank($GLOBAL.game, tank);
       }
     }
   }

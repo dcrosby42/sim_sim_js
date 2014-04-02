@@ -15,7 +15,7 @@ class Client extends EventEmitter
 
     @adapter.on 'ClientAdapter::Packet', (data) =>
       msg = @_unpackServerMessage(data)
-      @_debug "rec'd ClientAdapter::Packet", msg
+      @_debug "rec'd ClientAdapter::Packet", msg unless msg.type == 'ServerMessage::TurnComplete'
       switch msg.type
         when 'ServerMessage::IdAssigned'
           @clientId = msg.ourId
@@ -98,7 +98,7 @@ class Client extends EventEmitter
     protoTurn
 
   _sendMessage: (msg) ->
-    @_debug "_sendMessage", msg
+    @_debug "_sendMessage", msg unless msg.type == 'ClientMsg::TurnFinished'
     @adapter.send @_packClientMessage(msg)
 
   _debug: (args...) ->

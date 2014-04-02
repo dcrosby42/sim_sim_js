@@ -14,7 +14,7 @@ class Tanks2World extends WorldBase
     @data.nextId += 1
     @data.tanks[tankId] = {
       x: 200
-      y: 200 
+      y: 200
       angle: 0
       speed: 0
       controls: {
@@ -24,31 +24,56 @@ class Tanks2World extends WorldBase
       }
     }
     @data.players[id] = { score: 0, tankId: tankId }
+    console.log "Player #{id} JOINED, @data is now", @data
 
   playerLeft: (id) ->
     if tankId = @data.players[id].tankId
       delete @data.tanks[tankId]
     delete @data.players[id]
+    console.log "Player #{id} LEFT, @data is now", @data
 
   step: (dt) ->
+    for tankId,info of @data.tanks
+      if info.controls.forward
+        info.speed = 200
+      else
+        info.speed -= 4 if info.speed > 0
+    
+      if info.controls.left
+        info.angle -= 4
+
+      if info.controls.right
+        info.angle += 4
+
+      r = (info.angle * Math.PI/180.0)
+      info.x += dt* info.speed * Math.cos(r)
+      info.y += dt*info.speed * Math.sin(r)
+
+
 
   toAttributes: ->
     @data
 
   moveForward: (id,active) ->
-    console.log "moveForward #{id} -> #{active}", @data
+    # console.log "moveForward #{id} -> #{active}", @data
     if tank = @_playerTank(id)
       tank.controls.forward = active
 
   turnLeft: (id,active) ->
-    console.log "turnLeft #{id} -> #{active}", @data
+    # console.log "turnLeft #{id} -> #{active}", @data
     if tank = @_playerTank(id)
       tank.controls.left = active
 
   turnRight: (id,active) ->
-    console.log "turnRight #{id} -> #{active}", @data
+    # console.log "turnRight #{id} -> #{active}", @data
     if tank = @_playerTank(id)
       tank.controls.right = active
+
+  setLoc: (id,x,y) ->
+    if tank = @_playerTank(id)
+      tank.x = x
+      tank.y = y
+
 
   _playerTank: (id) ->
     @data.tanks[@data.players[id].tankId]
@@ -114,6 +139,7 @@ create = ->
 
   $GLOBAL.localControls = {up:false,left:false,right:false,down:false}
 
+  setInterval(updateSimulation, 1000/30)
 
 # 
 # 
@@ -125,28 +151,31 @@ create = ->
 
 class Tank
   constructor: (@game,info) ->
-    console.log info
     @tankSprite = @game.add.sprite(info.x,info.y, 'tank', 'tank1')
     @tankSprite.anchor.setTo(0.5, 0.5)
     @tankSprite.animations.add('move', ['tank1', 'tank2', 'tank3', 'tank4', 'tank5', 'tank6'], 20, true)
-    @game.physics.enable(@tankSprite, Phaser.Physics.ARCADE)
-    @tankSprite.body.drag.set(0.2)
-    @tankSprite.body.maxVelocity.setTo(400, 400)
-    @tankSprite.body.collideWorldBounds = true
+    # @game.physics.enable(@tankSprite, Phaser.Physics.ARCADE)
+    # @tankSprite.body.drag.set(0.2)
+    # @tankSprite.body.maxVelocity.setTo(400, 400)
+    # @tankSprite.body.collideWorldBounds = true
     @tankSprite.bringToTop()
-
-    @currentSpeed = info.speed
 
 createTank = (game,info) ->
   tank = new Tank(game,info)
-  game.camera.follow(tank.tankSprite)
-  game.camera.deadzone = new Phaser.Rectangle(150, 150, 500, 300)
+  # game.camera.follow(tank.tankSprite)
+  # game.camera.deadzone = new Phaser.Rectangle(150, 150, 500, 300)
   tank
 
-update = ->
+destroyTank = (game,tank) ->
+  tank.tankSprite.kill()
+
+updateSimulation = ->
   now = new Date().getTime()
   elapsedSeconds = (now - $GLOBAL.beginTime)/1000.0
   $GLOBAL.simulation.update elapsedSeconds
+
+
+update = ->
 
 
   tanks = $GLOBAL.clutch.tanks
@@ -158,19 +187,30 @@ update = ->
         tanks[tankId] = tank
         console.log "Created tank #{tankId}",tank
 
+      tank.tankSprite.angle = tankInfo.angle
+      tank.tankSprite.x = tankInfo.x
+      tank.tankSprite.y = tankInfo.y
+
+      # if (tankInfo.speed > 0)
+      #   $GLOBAL.game.physics.arcade.velocityFromRotation(
+      #     tank.tankSprite.rotation
+      #     tankInfo.speed
+      #     tank.tankSprite.body.velocity
+      #   )
+
+      #
+      # SUPER NAUGHTY.
+      #  
+      # tankInfo.x = tank.tankSprite.x.fixed()
+      # tankInfo.y = tank.tankSprite.y.fixed()
+      # WUH?
+      # $GLOBAL.simulation.worldProxy 'setLoc', tank.tankSprite.x.fixed(), tank.tankSprite.y.fixed()
+
+    for tankId,tank of tanks
+      if !world.data.tanks[tankId]
+        destroyTank($GLOBAL.game,tank)
       # console.log "Update tank #{tankId}"
 
-      if tankInfo.controls.forward
-        console.log "Setting speed to 300"
-        tank.currentSpeed = 300
-      else
-        tank.currentSpeed -= 4
-
-      if tankInfo.controls.left
-        tank.tankSprite.angle -= 4
-
-      if tankInfo.controls.right
-        tank.tankSprite.angle += 4
   
   #  Position all the parts and align rotations
   # shadow.x = tank.x
@@ -178,8 +218,6 @@ update = ->
   # shadow.rotation = tank.rotation
         # update tank
 
-      if (tank.currentSpeed > 0)
-        $GLOBAL.game.physics.arcade.velocityFromRotation(tank.tankSprite.rotation, tank.currentSpeed, tank.tankSprite.body.velocity)
 
 
 
