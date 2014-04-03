@@ -353,6 +353,10 @@ Simulation = (function() {
     }
   };
 
+  Simulation.prototype.clientId = function() {
+    return this.client.clientId;
+  };
+
   Simulation.prototype.quit = function() {
     this.client.disconnect();
     return this.simState = null;
@@ -891,7 +895,7 @@ updateSimulation = function() {
 };
 
 update = function() {
-  var controls, cursors, left, right, tank, tankId, tankInfo, tanks, up, world, _ref;
+  var controls, cursors, left, me, right, tank, tankId, tankInfo, tanks, up, world, _ref;
   if (world = $GLOBAL.simulation.worldState()) {
     tanks = $GLOBAL.clutch.tanks;
     _ref = world.data.tanks;
@@ -901,6 +905,13 @@ update = function() {
       if (!tank) {
         tank = createTank($GLOBAL.game, tankInfo);
         tanks[tankId] = tank;
+        me = $GLOBAL.simulation.clientId();
+        console.log("Created tank " + tankId + ".  My id is " + me + " and I own tank " + world.data.players[me].tankId);
+        if (world.data.players[me].tankId === tankId) {
+          console.log("THIS IS MY TANK LET'S CAMERA FOLLOW");
+          $GLOBAL.game.camera.follow(tank.tankSprite);
+          $GLOBAL.game.camera.deadzone = new Phaser.Rectangle(150, 150, 500, 300);
+        }
       }
       tank.tankSprite.angle = tankInfo.angle;
       tank.tankSprite.x = tankInfo.x;
@@ -938,7 +949,9 @@ update = function() {
   if (!right && controls.right) {
     $GLOBAL.simulation.worldProxy('turnRight', false);
   }
-  return controls.right = right;
+  controls.right = right;
+  $GLOBAL.land.tilePosition.x = -$GLOBAL.game.camera.x;
+  return $GLOBAL.land.tilePosition.y = -$GLOBAL.game.camera.y;
 };
 
 render = function() {};

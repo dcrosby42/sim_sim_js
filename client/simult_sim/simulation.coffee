@@ -16,6 +16,9 @@ class Simulation
   worldState: ->
     @simState.world if @simState
 
+  clientId: ->
+    @client.clientId
+
   quit: ->
     @client.disconnect()
     @simState = null

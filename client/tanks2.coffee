@@ -130,6 +130,7 @@ class Tank
 
     @tankSprite.bringToTop()
 
+
 createTank = (game,info) ->
   tank = new Tank(game,info)
   tank
@@ -153,6 +154,12 @@ update = ->
         # A tank has appeared in the world state that we're not yet mirroring in Phaser.
         tank = createTank($GLOBAL.game, tankInfo) # build new tank object
         tanks[tankId] = tank # store in the 'clutch'
+        me = $GLOBAL.simulation.clientId()
+        console.log "Created tank #{tankId}.  My id is #{me} and I own tank #{world.data.players[me].tankId}"
+        if world.data.players[me].tankId == tankId
+          console.log "THIS IS MY TANK LET'S CAMERA FOLLOW"
+          $GLOBAL.game.camera.follow(tank.tankSprite)
+          $GLOBAL.game.camera.deadzone = new Phaser.Rectangle(150, 150, 500, 300)
 
       # Sync the Phaser game state based on current world state:
       tank.tankSprite.angle = tankInfo.angle
@@ -196,8 +203,8 @@ update = ->
   controls.right = right
 
   # TODO Scroll the background:
-  # $GLOBAL.land.tilePosition.x = -($GLOBAL.game.camera.x)
-  # $GLOBAL.land.tilePosition.y = -($GLOBAL.game.camera.y)
+  $GLOBAL.land.tilePosition.x = -($GLOBAL.game.camera.x)
+  $GLOBAL.land.tilePosition.y = -($GLOBAL.game.camera.y)
 
 render = -> # TODO something interesting here?
 

@@ -456,6 +456,10 @@ Simulation = (function() {
     }
   };
 
+  Simulation.prototype.clientId = function() {
+    return this.client.clientId;
+  };
+
   Simulation.prototype.quit = function() {
     this.client.disconnect();
     return this.simState = null;
