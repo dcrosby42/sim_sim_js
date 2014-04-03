@@ -732,11 +732,14 @@ Tanks2World = (function(_super) {
       x: 200,
       y: 200,
       angle: 0,
+      turretAngle: 0,
       speed: 0,
       controls: {
         left: false,
         right: false,
-        forward: false
+        forward: false,
+        turretLeft: false,
+        turretRight: false
       }
     };
     this.data.players[id] = {
@@ -774,6 +777,12 @@ Tanks2World = (function(_super) {
       if (info.controls.right) {
         info.angle += 4;
       }
+      if (info.controls.turretLeft) {
+        info.turretAngle -= 4;
+      }
+      if (info.controls.turretRight) {
+        info.turretAngle += 4;
+      }
       r = info.angle * Math.PI / 180.0;
       info.x += dt * info.speed * Math.cos(r);
       _results.push(info.y += dt * info.speed * Math.sin(r));
@@ -803,6 +812,20 @@ Tanks2World = (function(_super) {
     var tank;
     if (tank = this._playerTank(id)) {
       return tank.controls.right = active;
+    }
+  };
+
+  Tanks2World.prototype.spinTurretRight = function(id, active) {
+    var tank;
+    if (tank = this._playerTank(id)) {
+      return tank.controls.turretRight = active;
+    }
+  };
+
+  Tanks2World.prototype.spinTurretLeft = function(id, active) {
+    var tank;
+    if (tank = this._playerTank(id)) {
+      return tank.controls.turretLeft = active;
     }
   };
 
@@ -855,11 +878,15 @@ create = function() {
   $GLOBAL.land = $GLOBAL.game.add.tileSprite(0, 0, 800, 600, 'earth');
   $GLOBAL.land.fixedToCamera = true;
   $GLOBAL.cursors = $GLOBAL.game.input.keyboard.createCursorKeys();
+  $GLOBAL.cursors.turretLeft = $GLOBAL.game.input.keyboard.addKey(Phaser.Keyboard.A);
+  $GLOBAL.cursors.turretRight = $GLOBAL.game.input.keyboard.addKey(Phaser.Keyboard.D);
   $GLOBAL.localControls = {
     up: false,
     left: false,
     right: false,
-    down: false
+    down: false,
+    turretLeft: false,
+    turretRight: false
   };
   return setInterval(updateSimulation, 1000 / 30);
 };
@@ -867,11 +894,22 @@ create = function() {
 Tank = (function() {
   function Tank(game, info) {
     this.game = game;
-    this.tankSprite = this.game.add.sprite(info.x, info.y, 'tank', 'tank1');
-    this.tankSprite.anchor.setTo(0.5, 0.5);
-    this.tankSprite.animations.add('move', ['tank1', 'tank2', 'tank3', 'tank4', 'tank5', 'tank6'], 20, true);
-    this.tankSprite.bringToTop();
+    this.chassis = this.game.add.sprite(info.x, info.y, 'tank', 'tank1');
+    this.chassis.anchor.setTo(0.5, 0.5);
+    this.chassis.animations.add('move', ['tank1', 'tank2', 'tank3', 'tank4', 'tank5', 'tank6'], 20, true);
+    this.turret = game.add.sprite(info.x, info.y, 'tank', 'turret');
+    this.turret.anchor.setTo(0.3, 0.5);
+    this.shadow = this.game.add.sprite(0, 0, 'tank', 'shadow');
+    this.shadow.anchor.setTo(0.5, 0.5);
+    this.chassis.bringToTop();
+    this.turret.bringToTop();
   }
+
+  Tank.prototype.kill = function() {
+    this.chassis.kill();
+    this.shadow.kill();
+    return this.turret.kill();
+  };
 
   return Tank;
 
@@ -884,7 +922,7 @@ createTank = function(game, info) {
 };
 
 destroyTank = function(game, tank) {
-  return tank.tankSprite.kill();
+  return tank.kill();
 };
 
 updateSimulation = function() {
@@ -895,7 +933,7 @@ updateSimulation = function() {
 };
 
 update = function() {
-  var controls, cursors, left, me, right, tank, tankId, tankInfo, tanks, up, world, _ref;
+  var controls, cursors, left, me, right, tank, tankId, tankInfo, tanks, turretLeft, turretRight, up, world, _ref;
   if (world = $GLOBAL.simulation.worldState()) {
     tanks = $GLOBAL.clutch.tanks;
     _ref = world.data.tanks;
@@ -909,13 +947,19 @@ update = function() {
         console.log("Created tank " + tankId + ".  My id is " + me + " and I own tank " + world.data.players[me].tankId);
         if (world.data.players[me].tankId === tankId) {
           console.log("THIS IS MY TANK LET'S CAMERA FOLLOW");
-          $GLOBAL.game.camera.follow(tank.tankSprite);
+          $GLOBAL.game.camera.follow(tank.chassis);
           $GLOBAL.game.camera.deadzone = new Phaser.Rectangle(150, 150, 500, 300);
         }
       }
-      tank.tankSprite.angle = tankInfo.angle;
-      tank.tankSprite.x = tankInfo.x;
-      tank.tankSprite.y = tankInfo.y;
+      tank.chassis.angle = tankInfo.angle;
+      tank.chassis.x = tankInfo.x;
+      tank.chassis.y = tankInfo.y;
+      tank.shadow.angle = tankInfo.angle;
+      tank.shadow.x = tankInfo.x;
+      tank.shadow.y = tankInfo.y;
+      tank.turret.x = tankInfo.x;
+      tank.turret.y = tankInfo.y;
+      tank.turret.angle = tankInfo.angle + tankInfo.turretAngle;
     }
     for (tankId in tanks) {
       tank = tanks[tankId];
@@ -950,6 +994,22 @@ update = function() {
     $GLOBAL.simulation.worldProxy('turnRight', false);
   }
   controls.right = right;
+  turretRight = cursors.turretRight.isDown;
+  if (turretRight && !controls.turretRight) {
+    $GLOBAL.simulation.worldProxy('spinTurretRight', true);
+  }
+  if (!turretRight && controls.turretRight) {
+    $GLOBAL.simulation.worldProxy('spinTurretRight', false);
+  }
+  controls.turretRight = turretRight;
+  turretLeft = cursors.turretLeft.isDown;
+  if (turretLeft && !controls.turretLeft) {
+    $GLOBAL.simulation.worldProxy('spinTurretLeft', true);
+  }
+  if (!turretLeft && controls.turretLeft) {
+    $GLOBAL.simulation.worldProxy('spinTurretLeft', false);
+  }
+  controls.turretLeft = turretLeft;
   $GLOBAL.land.tilePosition.x = -$GLOBAL.game.camera.x;
   return $GLOBAL.land.tilePosition.y = -$GLOBAL.game.camera.y;
 };
