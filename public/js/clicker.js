@@ -98,7 +98,7 @@ ClickerWorld = (function(_super) {
 
 })(WorldBase);
 
-module.exports = MyWorld;
+module.exports = ClickerWorld;
 
 
 },{"./simult_sim/world_base.coffee":17}],3:[function(require,module,exports){

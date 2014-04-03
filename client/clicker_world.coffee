@@ -31,4 +31,4 @@ class ClickerWorld extends WorldBase
 
   _debug: (args...) -> console.log "[MyWorld]", args... if @_debugOn
 
-module.exports = MyWorld
+module.exports = ClickerWorld
