@@ -70,6 +70,11 @@ module.exports = (grunt) ->
         options:
           failOnError: true
           stdout: true
+      browserify_pixitest2:
+        command: "node_modules/.bin/browserify -t coffeeify client/pixitest2.coffee > public/js/pixitest2.js"
+        options:
+          failOnError: true
+          stdout: true
 
   grunt.loadNpmTasks 'grunt-contrib-coffee'
   grunt.loadNpmTasks 'grunt-contrib-watch'
@@ -84,7 +89,7 @@ module.exports = (grunt) ->
   grunt.registerTask 'test', 'shell:jasmine'
   grunt.registerTask 'wtest', 'shell:jasmine_watch'
 
-  grunt.registerTask 'bundle', ['shell:browserify_clicker', 'shell:browserify_tanks2', 'shell:browserify_pixitest']
+  grunt.registerTask 'bundle', ['shell:browserify_clicker', 'shell:browserify_tanks2', 'shell:browserify_pixitest', 'shell:browserify_pixitest2' ]
 
     # uglify:
     #   options:
