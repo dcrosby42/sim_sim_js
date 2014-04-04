@@ -1,5 +1,119 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-var METER, MathUtil, STAGE_HEIGHT, STAGE_WIDTH, actors, bodies, getBodyAtMouse, isBegin, loadAssets, mouseJoint, onLoad, onMove, renderer, stage, stats, touchX, touchY, update, world;
+var InputState, KeyboardController, KeyboardWrapper, METER, MathUtil, STAGE_HEIGHT, STAGE_WIDTH, actors, bodies, getBodyAtMouse, isBegin, keyboardController, loadAssets, loadAssets2, mouseJoint, onLoad, onMove, renderer, stage, stats, touchX, touchY, update, world;
+
+KeyboardWrapper = (function() {
+  function KeyboardWrapper(keys) {
+    var key, _i, _len, _ref;
+    this.keys = keys;
+    this.downs = {};
+    _ref = this.keys;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      key = _ref[_i];
+      this.downs[key] = false;
+      this._bind(key);
+    }
+  }
+
+  KeyboardWrapper.prototype._bind = function(key) {
+    Mousetrap.bind(key, ((function(_this) {
+      return function() {
+        return _this._keyDown(key);
+      };
+    })(this)), 'keydown');
+    return Mousetrap.bind(key, ((function(_this) {
+      return function() {
+        return _this._keyUp(key);
+      };
+    })(this)), 'keyup');
+  };
+
+  KeyboardWrapper.prototype._keyDown = function(key) {
+    this.downs[key] = true;
+    return false;
+  };
+
+  KeyboardWrapper.prototype._keyUp = function(key) {
+    this.downs[key] = false;
+    return false;
+  };
+
+  KeyboardWrapper.prototype.isActive = function(key) {
+    return this.downs[key];
+  };
+
+  return KeyboardWrapper;
+
+})();
+
+InputState = (function() {
+  function InputState(key) {
+    this.key = key;
+    this.active = false;
+  }
+
+  InputState.prototype.update = function(keyboardWrapper) {
+    var newState, oldState;
+    oldState = this.active;
+    newState = keyboardWrapper.isActive(this.key);
+    this.active = newState;
+    if (!oldState && newState) {
+      return "justPressed";
+    }
+    if (oldState && !newState) {
+      return "justReleased";
+    } else {
+      return null;
+    }
+  };
+
+  return InputState;
+
+})();
+
+KeyboardController = (function() {
+  function KeyboardController(bindings) {
+    var action, key, _ref;
+    this.bindings = bindings;
+    this.keys = [];
+    this.inputStates = {};
+    this.actionStates = {};
+    _ref = this.bindings;
+    for (key in _ref) {
+      action = _ref[key];
+      this.keys.push(key);
+      this.inputStates[key] = new InputState(key);
+      this.actionStates[key] = false;
+    }
+    this.keyboardWrapper = new KeyboardWrapper(this.keys);
+  }
+
+  KeyboardController.prototype.update = function() {
+    var action, diff, inputState, key, res, _ref;
+    diff = {};
+    _ref = this.inputStates;
+    for (key in _ref) {
+      inputState = _ref[key];
+      action = this.bindings[key];
+      res = inputState.update(this.keyboardWrapper);
+      switch (res) {
+        case "justPressed":
+          diff[action] = true;
+          this.actionStates[action] = true;
+          break;
+        case "justReleased":
+          diff[action] = false;
+          this.actionStates[action] = false;
+          break;
+        default:
+          this.actionStates[action] = false;
+      }
+    }
+    return diff;
+  };
+
+  return KeyboardController;
+
+})();
 
 STAGE_WIDTH = window.innerWidth;
 
@@ -26,6 +140,8 @@ touchY = null;
 isBegin = false;
 
 stats = null;
+
+keyboardController = null;
 
 MathUtil = function() {};
 
@@ -72,14 +188,43 @@ onLoad = function() {
   stage = new PIXI.Stage(0xDDDDDD, true);
   renderer = PIXI.autoDetectRenderer(STAGE_WIDTH, STAGE_HEIGHT, void 0, false);
   document.body.appendChild(renderer.view);
+  keyboardController = new KeyboardController({
+    w: "forward",
+    a: "turnLeft"
+  });
   loader = new PIXI.AssetLoader(["pixibox_assets/ball.png", "pixibox_assets/box.jpg"]);
-  loader.onComplete = loadAssets;
+  loader.onComplete = loadAssets2;
   return loader.load();
 };
 
+loadAssets2 = function() {
+  var body, bodyDef, box, gravity, polyFixture;
+  gravity = new Box2D.Common.Math.b2Vec2(0, 0);
+  world = new Box2D.Dynamics.b2World(gravity, true);
+  polyFixture = new Box2D.Dynamics.b2FixtureDef();
+  polyFixture.shape = new Box2D.Collision.Shapes.b2PolygonShape();
+  polyFixture.density = 1;
+  polyFixture.shape.SetAsBox(50, 50);
+  bodyDef = new Box2D.Dynamics.b2BodyDef();
+  bodyDef.type = Box2D.Dynamics.b2Body.b2_dynamicBody;
+  bodyDef.position.Set(2, 2);
+  body = world.CreateBody(bodyDef);
+  body.CreateFixture(polyFixture);
+  bodies.push(body);
+  box = new PIXI.Sprite(PIXI.Texture.fromFrame("pixibox_assets/box.jpg"));
+  stage.addChild(box);
+  box.i = 0;
+  box.anchor.x = box.anchor.y = 0.5;
+  box.scale.x = 1;
+  box.scale.y = 1;
+  actors.push(box);
+  return update();
+};
+
 loadAssets = function() {
-  var ball, body, bodyDef, box, circleFixture, i, polyFixture, s, _i;
-  world = new Box2D.Dynamics.b2World(new Box2D.Common.Math.b2Vec2(0, 10), true);
+  var ball, body, bodyDef, box, circleFixture, gravity, i, polyFixture, s, _i;
+  gravity = new Box2D.Common.Math.b2Vec2(0, 10);
+  world = new Box2D.Dynamics.b2World(gravity, true);
   polyFixture = new Box2D.Dynamics.b2FixtureDef();
   polyFixture.shape = new Box2D.Collision.Shapes.b2PolygonShape();
   polyFixture.density = 1;
@@ -94,9 +239,7 @@ loadAssets = function() {
   world.CreateBody(bodyDef).CreateFixture(polyFixture);
   polyFixture.shape.SetAsBox(1, 100);
   bodyDef.position.Set(-1, 0);
-  world.CreateBody(bodyDef).CreateFixture(polyFixture);
   bodyDef.position.Set(STAGE_WIDTH / METER + 1, 0);
-  world.CreateBody(bodyDef).CreateFixture(polyFixture);
   bodyDef.type = Box2D.Dynamics.b2Body.b2_dynamicBody;
   for (i = _i = 0; _i <= 29; i = ++_i) {
     bodyDef.position.Set(MathUtil.rndRange(0, STAGE_WIDTH) / METER, -MathUtil.rndRange(50, 5000) / METER);
@@ -184,7 +327,7 @@ onMove = function(event) {
 };
 
 update = function() {
-  var actor, body, dragBody, i, jointDef, position, _i, _ref;
+  var actor, body, dragBody, i, input, jointDef, position, v, _i, _ref;
   requestAnimationFrame(update);
   if (isBegin && !mouseJoint) {
     dragBody = getBodyAtMouse();
@@ -206,6 +349,12 @@ update = function() {
       world.DestroyJoint(mouseJoint);
       mouseJoint = null;
     }
+  }
+  input = keyboardController.update();
+  if (input.forward) {
+    console.log("forward!");
+    v = new Box2D.Common.Math.b2Vec2(0, -500);
+    bodies[0].ApplyImpulse(v, bodies[0].GetWorldCenter());
   }
   world.Step(1 / 60, 3, 3);
   world.ClearForces();

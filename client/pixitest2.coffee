@@ -1,3 +1,84 @@
+class KeyboardWrapper
+  constructor: (@keys) ->
+    @downs = {}
+    for key in @keys
+      @downs[key] = false
+      @_bind key
+
+  _bind: (key) ->
+    Mousetrap.bind key, (=> @_keyDown(key)), 'keydown'
+    Mousetrap.bind key, (=> @_keyUp(key)), 'keyup'
+  
+  _keyDown: (key) ->
+    @downs[key] = true
+    # console.log "KW down #{key}", @downs
+    false
+
+  _keyUp: (key) ->
+    @downs[key] = false
+    # console.log "KW up #{key}", @downs
+    false
+
+  isActive: (key) ->
+    @downs[key]
+
+
+class InputState
+  constructor: (@key)->
+    @active = false
+
+  update: (keyboardWrapper)->
+    oldState = @active
+    newState = keyboardWrapper.isActive(@key)
+    @active = newState
+    if !oldState and newState
+      return "justPressed"
+    if oldState and !newState
+      return "justReleased"
+    else
+      return null
+
+class KeyboardController
+  constructor: (@bindings) ->
+    @keys = []
+    @inputStates = {}
+    @actionStates = {}
+    for key,action of @bindings
+      @keys.push(key)
+      @inputStates[key] = new InputState(key)
+      @actionStates[key] = false
+
+    @keyboardWrapper = new KeyboardWrapper(@keys)
+
+  update: ->
+    diff = {}
+    for key,inputState of @inputStates
+      action = @bindings[key]
+      res = inputState.update(@keyboardWrapper)
+      switch res
+        when "justPressed"
+          diff[action] = true
+          @actionStates[action] = true
+        when "justReleased"
+          diff[action] = false
+          @actionStates[action] = false
+        else
+          @actionStates[action] = false
+    diff
+        
+          
+          
+        
+
+
+
+    
+
+
+
+
+
+
 
 STAGE_WIDTH = window.innerWidth
 STAGE_HEIGHT = window.innerHeight
@@ -12,6 +93,7 @@ touchX = null
 touchY = null
 isBegin = false
 stats = null
+keyboardController = null
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 MathUtil = ->
@@ -48,14 +130,59 @@ onLoad = ->
   
   renderer = PIXI.autoDetectRenderer(STAGE_WIDTH, STAGE_HEIGHT, undefined, false)
   document.body.appendChild(renderer.view)
+
+  # keymage('a', -> console.log("You pressed 'a'"))
+  # Mousetrap.bind("down", (-> false))
+  # Mousetrap.bind("up", (-> false))
+  # Mousetrap.bind("left", (-> false))
+  # Mousetrap.bind("right", (-> false))
+  # Mousetrap.bind("down", (-> console.log("down released"); false), 'keyup')
+  keyboardController = new KeyboardController(
+    w: "forward"
+    a: "turnLeft"
+  )
   
   loader = new PIXI.AssetLoader(["pixibox_assets/ball.png",
                                        "pixibox_assets/box.jpg"])
-  loader.onComplete = loadAssets
+  loader.onComplete = loadAssets2
   loader.load()
 
+loadAssets2 = ->
+  gravity = new Box2D.Common.Math.b2Vec2(0, 0)
+  world = new Box2D.Dynamics.b2World(gravity,  true)
+
+  polyFixture = new Box2D.Dynamics.b2FixtureDef()
+  polyFixture.shape = new Box2D.Collision.Shapes.b2PolygonShape()
+  polyFixture.density = 1
+
+  polyFixture.shape.SetAsBox(50,50)
+
+  bodyDef = new Box2D.Dynamics.b2BodyDef()
+  bodyDef.type = Box2D.Dynamics.b2Body.b2_dynamicBody
+
+  bodyDef.position.Set(2,2)
+
+  # s = MathUtil.rndRange(50, 100)
+
+  body = world.CreateBody(bodyDef)
+  body.CreateFixture(polyFixture)
+  bodies.push(body)
+  
+
+  box = new PIXI.Sprite(PIXI.Texture.fromFrame("pixibox_assets/box.jpg"))
+  stage.addChild(box)
+  box.i = 0
+  box.anchor.x = box.anchor.y = 0.5
+  box.scale.x = 1
+  box.scale.y = 1
+  
+  actors.push box
+
+  update()
+
 loadAssets = ->
-  world = new Box2D.Dynamics.b2World(new Box2D.Common.Math.b2Vec2(0, 10),  true)
+  gravity = new Box2D.Common.Math.b2Vec2(0, 10)
+  world = new Box2D.Dynamics.b2World(gravity,  true)
   
   polyFixture = new Box2D.Dynamics.b2FixtureDef()
   polyFixture.shape = new Box2D.Collision.Shapes.b2PolygonShape()
@@ -77,11 +204,12 @@ loadAssets = ->
   #left
   polyFixture.shape.SetAsBox(1, 100)
   bodyDef.position.Set(-1, 0)
-  world.CreateBody(bodyDef).CreateFixture(polyFixture)
+  # world.CreateBody(bodyDef).CreateFixture(polyFixture)
   
   #right
   bodyDef.position.Set(STAGE_WIDTH / METER + 1, 0)
-  world.CreateBody(bodyDef).CreateFixture(polyFixture)
+  # world.CreateBody(bodyDef).CreateFixture(polyFixture)
+
   bodyDef.type = Box2D.Dynamics.b2Body.b2_dynamicBody
   
   for i in [0..29]
@@ -191,6 +319,17 @@ update = ->
     else
       world.DestroyJoint(mouseJoint)
       mouseJoint = null
+
+  input = keyboardController.update()
+  if input.forward
+    console.log "forward!"
+    v = new Box2D.Common.Math.b2Vec2(0,-500)
+    bodies[0].ApplyImpulse(v, bodies[0].GetWorldCenter())
+
+  # for k,v of 
+  #   console.log "Keyboard change: #{k} is #{v}"
+
+
   
   world.Step(1 / 60,  3,  3)
   world.ClearForces()
@@ -202,6 +341,7 @@ update = ->
     actor.position.x = position.x * 100
     actor.position.y = position.y * 100
     actor.rotation = body.GetAngle()
+
   
   renderer.render(stage)
   stats.update()
