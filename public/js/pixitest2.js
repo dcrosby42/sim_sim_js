@@ -1,5 +1,5 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-var InputState, KeyboardController, KeyboardWrapper, METER, MathUtil, STAGE_HEIGHT, STAGE_WIDTH, actors, bodies, getBodyAtMouse, isBegin, keyboardController, loadAssets, loadAssets2, mouseJoint, onLoad, onMove, renderer, stage, stats, touchX, touchY, update, world;
+var InputState, KeyboardController, KeyboardWrapper;
 
 KeyboardWrapper = (function() {
   function KeyboardWrapper(keys) {
@@ -103,17 +103,30 @@ KeyboardController = (function() {
         case "justReleased":
           diff[action] = false;
           this.actionStates[action] = false;
-          break;
-        default:
-          this.actionStates[action] = false;
       }
     }
     return diff;
   };
 
+  KeyboardController.prototype.isActive = function(action) {
+    return this.actionStates[action];
+  };
+
   return KeyboardController;
 
 })();
+
+module.exports = KeyboardController;
+
+
+},{}],2:[function(require,module,exports){
+var KeyboardController, METER, MathUtil, STAGE_HEIGHT, STAGE_WIDTH, actors, bodies, getBodyAtMouse, isBegin, keyboardController, loadAssets, loadAssets2, makeBoxBody, makeBoxSprite, mouseJoint, onLoad, onMove, renderer, stage, stats, touchX, touchY, update, vec2, world;
+
+KeyboardController = require('./keyboard_controller.coffee');
+
+vec2 = function(x, y) {
+  return new Box2D.Common.Math.b2Vec2(x, y);
+};
 
 STAGE_WIDTH = window.innerWidth;
 
@@ -190,7 +203,9 @@ onLoad = function() {
   document.body.appendChild(renderer.view);
   keyboardController = new KeyboardController({
     w: "forward",
-    a: "turnLeft"
+    a: "turnLeft",
+    d: "turnRight",
+    s: "back"
   });
   loader = new PIXI.AssetLoader(["pixibox_assets/ball.png", "pixibox_assets/box.jpg"]);
   loader.onComplete = loadAssets2;
@@ -198,27 +213,58 @@ onLoad = function() {
 };
 
 loadAssets2 = function() {
-  var body, bodyDef, box, gravity, polyFixture;
-  gravity = new Box2D.Common.Math.b2Vec2(0, 0);
+  var body, body2, box, box2, gravity;
+  gravity = vec2(0, 0);
   world = new Box2D.Dynamics.b2World(gravity, true);
+  body = makeBoxBody({
+    x: 8,
+    y: 2,
+    size: 0.5
+  });
+  bodies.push(body);
+  box = makeBoxSprite({
+    size: 0.5
+  });
+  stage.addChild(box);
+  actors.push(box);
+  body2 = makeBoxBody({
+    x: 2,
+    y: 2,
+    size: 0.5
+  });
+  bodies.push(body2);
+  box2 = makeBoxSprite({
+    size: 0.5
+  });
+  stage.addChild(box2);
+  actors.push(box2);
+  return update();
+};
+
+makeBoxBody = function(opts) {
+  var body, bodyDef, polyFixture;
   polyFixture = new Box2D.Dynamics.b2FixtureDef();
   polyFixture.shape = new Box2D.Collision.Shapes.b2PolygonShape();
   polyFixture.density = 1;
-  polyFixture.shape.SetAsBox(50, 50);
+  polyFixture.shape.SetAsBox(opts.size, opts.size);
   bodyDef = new Box2D.Dynamics.b2BodyDef();
   bodyDef.type = Box2D.Dynamics.b2Body.b2_dynamicBody;
-  bodyDef.position.Set(2, 2);
+  bodyDef.position.Set(opts.x, opts.y);
   body = world.CreateBody(bodyDef);
   body.CreateFixture(polyFixture);
-  bodies.push(body);
+  body.SetLinearDamping(3);
+  body.SetAngularDamping(3);
+  return body;
+};
+
+makeBoxSprite = function(opts) {
+  var box;
   box = new PIXI.Sprite(PIXI.Texture.fromFrame("pixibox_assets/box.jpg"));
-  stage.addChild(box);
   box.i = 0;
   box.anchor.x = box.anchor.y = 0.5;
-  box.scale.x = 1;
-  box.scale.y = 1;
-  actors.push(box);
-  return update();
+  box.scale.x = opts.size * 2;
+  box.scale.y = opts.size * 2;
+  return box;
 };
 
 loadAssets = function() {
@@ -327,7 +373,7 @@ onMove = function(event) {
 };
 
 update = function() {
-  var actor, body, dragBody, i, input, jointDef, position, v, _i, _ref;
+  var a, actor, body, box, dragBody, f, i, jointDef, position, r, v, _i, _ref;
   requestAnimationFrame(update);
   if (isBegin && !mouseJoint) {
     dragBody = getBodyAtMouse();
@@ -350,11 +396,21 @@ update = function() {
       mouseJoint = null;
     }
   }
-  input = keyboardController.update();
-  if (input.forward) {
-    console.log("forward!");
-    v = new Box2D.Common.Math.b2Vec2(0, -500);
-    bodies[0].ApplyImpulse(v, bodies[0].GetWorldCenter());
+  box = bodies[0];
+  keyboardController.update();
+  if (keyboardController.isActive("forward")) {
+    r = box.GetAngle();
+    f = 0.2 * box.GetMass();
+    v = vec2(f * Math.cos(r), f * Math.sin(r));
+    box.ApplyImpulse(v, box.GetWorldCenter());
+  }
+  if (keyboardController.isActive("turnRight")) {
+    a = bodies[0].GetAngle();
+    bodies[0].SetAngle(a + 0.06);
+  }
+  if (keyboardController.isActive("turnLeft")) {
+    a = bodies[0].GetAngle();
+    bodies[0].SetAngle(a - 0.06);
   }
   world.Step(1 / 60, 3, 3);
   world.ClearForces();
@@ -373,4 +429,4 @@ update = function() {
 window.onload = onLoad;
 
 
-},{}]},{},[1])
+},{"./keyboard_controller.coffee":1}]},{},[2])

@@ -19,10 +19,9 @@ module.exports = (grunt) ->
           
     watch:
       files: [
-        'Gruntfile.coffee'
         'client/**/*.coffee'
       ]
-      tasks: 'coffee:client'
+      tasks: ['shell:browserify_pixitest2']
     jasmine_node:
       options:
         forceExit: true

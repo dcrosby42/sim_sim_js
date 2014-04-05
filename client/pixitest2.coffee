@@ -1,82 +1,7 @@
-class KeyboardWrapper
-  constructor: (@keys) ->
-    @downs = {}
-    for key in @keys
-      @downs[key] = false
-      @_bind key
-
-  _bind: (key) ->
-    Mousetrap.bind key, (=> @_keyDown(key)), 'keydown'
-    Mousetrap.bind key, (=> @_keyUp(key)), 'keyup'
-  
-  _keyDown: (key) ->
-    @downs[key] = true
-    # console.log "KW down #{key}", @downs
-    false
-
-  _keyUp: (key) ->
-    @downs[key] = false
-    # console.log "KW up #{key}", @downs
-    false
-
-  isActive: (key) ->
-    @downs[key]
-
-
-class InputState
-  constructor: (@key)->
-    @active = false
-
-  update: (keyboardWrapper)->
-    oldState = @active
-    newState = keyboardWrapper.isActive(@key)
-    @active = newState
-    if !oldState and newState
-      return "justPressed"
-    if oldState and !newState
-      return "justReleased"
-    else
-      return null
-
-class KeyboardController
-  constructor: (@bindings) ->
-    @keys = []
-    @inputStates = {}
-    @actionStates = {}
-    for key,action of @bindings
-      @keys.push(key)
-      @inputStates[key] = new InputState(key)
-      @actionStates[key] = false
-
-    @keyboardWrapper = new KeyboardWrapper(@keys)
-
-  update: ->
-    diff = {}
-    for key,inputState of @inputStates
-      action = @bindings[key]
-      res = inputState.update(@keyboardWrapper)
-      switch res
-        when "justPressed"
-          diff[action] = true
-          @actionStates[action] = true
-        when "justReleased"
-          diff[action] = false
-          @actionStates[action] = false
-        else
-          @actionStates[action] = false
-    diff
+KeyboardController = require './keyboard_controller.coffee'
         
+vec2 = (x,y) -> new Box2D.Common.Math.b2Vec2(x,y)
           
-          
-        
-
-
-
-    
-
-
-
-
 
 
 
@@ -140,6 +65,8 @@ onLoad = ->
   keyboardController = new KeyboardController(
     w: "forward"
     a: "turnLeft"
+    d: "turnRight"
+    s: "back"
   )
   
   loader = new PIXI.AssetLoader(["pixibox_assets/ball.png",
@@ -148,37 +75,50 @@ onLoad = ->
   loader.load()
 
 loadAssets2 = ->
-  gravity = new Box2D.Common.Math.b2Vec2(0, 0)
+  gravity = vec2(0,0)
   world = new Box2D.Dynamics.b2World(gravity,  true)
 
+  body = makeBoxBody(x:8,y:2,size:0.5)
+  bodies.push(body)
+
+  box = makeBoxSprite(size:0.5)
+  stage.addChild(box)
+  actors.push box
+
+  body2 = makeBoxBody(x:2,y:2,size:0.5)
+  bodies.push(body2)
+
+  box2 = makeBoxSprite(size:0.5)
+  stage.addChild(box2)
+  actors.push box2
+
+  update()
+
+makeBoxBody = (opts) ->
   polyFixture = new Box2D.Dynamics.b2FixtureDef()
   polyFixture.shape = new Box2D.Collision.Shapes.b2PolygonShape()
   polyFixture.density = 1
 
-  polyFixture.shape.SetAsBox(50,50)
+  polyFixture.shape.SetAsBox(opts.size,opts.size)
 
   bodyDef = new Box2D.Dynamics.b2BodyDef()
   bodyDef.type = Box2D.Dynamics.b2Body.b2_dynamicBody
-
-  bodyDef.position.Set(2,2)
-
-  # s = MathUtil.rndRange(50, 100)
+  bodyDef.position.Set(opts.x, opts.y)
 
   body = world.CreateBody(bodyDef)
   body.CreateFixture(polyFixture)
-  bodies.push(body)
-  
+  body.SetLinearDamping(3)
+  body.SetAngularDamping(3)
 
+  body
+
+makeBoxSprite = (opts) ->
   box = new PIXI.Sprite(PIXI.Texture.fromFrame("pixibox_assets/box.jpg"))
-  stage.addChild(box)
   box.i = 0
   box.anchor.x = box.anchor.y = 0.5
-  box.scale.x = 1
-  box.scale.y = 1
-  
-  actors.push box
-
-  update()
+  box.scale.x = opts.size*2
+  box.scale.y = opts.size*2
+  box
 
 loadAssets = ->
   gravity = new Box2D.Common.Math.b2Vec2(0, 10)
@@ -320,17 +260,21 @@ update = ->
       world.DestroyJoint(mouseJoint)
       mouseJoint = null
 
-  input = keyboardController.update()
-  if input.forward
-    console.log "forward!"
-    v = new Box2D.Common.Math.b2Vec2(0,-500)
-    bodies[0].ApplyImpulse(v, bodies[0].GetWorldCenter())
+  box = bodies[0]
+  keyboardController.update()
+  if keyboardController.isActive("forward")
+    r = box.GetAngle()
+    f = 0.2 * box.GetMass()
+    v = vec2(f*Math.cos(r), f*Math.sin(r))
+    box.ApplyImpulse(v, box.GetWorldCenter())
 
-  # for k,v of 
-  #   console.log "Keyboard change: #{k} is #{v}"
+  if keyboardController.isActive("turnRight")
+    a = bodies[0].GetAngle()
+    bodies[0].SetAngle(a+0.06)
+  if keyboardController.isActive("turnLeft")
+    a = bodies[0].GetAngle()
+    bodies[0].SetAngle(a-0.06)
 
-
-  
   world.Step(1 / 60,  3,  3)
   world.ClearForces()
   
@@ -341,7 +285,6 @@ update = ->
     actor.position.x = position.x * 100
     actor.position.y = position.y * 100
     actor.rotation = body.GetAngle()
-
   
   renderer.render(stage)
   stats.update()
