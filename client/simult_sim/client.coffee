@@ -42,7 +42,6 @@ class Client extends EventEmitter
         when 'ServerMessage::GamestateRequest'
           copyOfSimEvents = @simulationEventsBuffer.slice(0)
           protoTurn = @_packProtoTurn(copyOfSimEvents)
-          # protoTurn = @_packProtoTurn(@simulationEventsBuffer)
           f = (gamestate) =>
             @_sendMessage @clientMessageFactory.gamestate(
               msg.forPlayerId,

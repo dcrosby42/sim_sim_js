@@ -6,15 +6,32 @@ vec2 = (x,y) -> new Box2D.Common.Math.b2Vec2(x,y)
 
 STAGE_WIDTH = window.innerWidth
 STAGE_HEIGHT = window.innerHeight
-METER = 100
-bodies = []
-actors = []
-stage = null
-renderer = null
-world = null
-stats = null
-keyboardController = null
-simulation = null
+
+class StopWatch
+  constructor: ->
+    @millis = @currentTimeMillis
+
+  lap: ->
+    newMillis = @currentTimeMillis
+    @lapMillis = newMillis - @millis
+    @millis = newMillis
+    @lapSeconds()
+
+  currentTimeMillis: ->
+    new Date().getTime()
+
+  lapSeconds: ->
+    @lapMillis / 1000.0
+
+window.local =
+  simulation: null
+  stopWatch: null
+  pixi:
+    stage: null
+    renderer: null
+    sprites: []
+  keyboardController: null
+  stats: null
 
 imageAssets = [
   "pixibox_assets/ball.png",
@@ -22,24 +39,172 @@ imageAssets = [
 ]
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+class TheWorld extends WorldBase
+  constructor: (data=null) ->
+    console.log "New TheWorld"
+    @data = data || {
+      nextId: 0
+      players: {}
+      boxes: {}
+    }
+    @gameObjects =
+      boxes: {}
+    @setupPhysics()
+    @syncDataToGameObjects()
+
+  playerJoined: (id) ->
+    boxId = "B#{@nextId()}"
+    @data.boxes[boxId] = {
+      x: 4
+      y: 2
+      angle: 0
+    }
+    @data.players[id] = { boxId: boxId, controls: {forward:false,left:false,right:false} }
+    @syncDataToGameObjects()
+    console.log "Player #{id} JOINED, @data is now", @data
+
+  playerLeft: (id) ->
+    if boxId = @data.players[id].boxId
+      delete @data.boxes[boxId]
+    delete @data.players[id]
+    @syncDataToGameObjects()
+    console.log "Player #{id} LEFT, @data is now", @data
+    
+  step: (dt) ->
+    @applyControls()
+
+    # Step the physics simulation:
+    @b2world.Step(dt,  3,  3)
+    @b2world.ClearForces()
+    
+    @moveSprites()
+
+  moveSprites: ->
+    for boxId,obj of @gameObjects.boxes
+      body = obj.body
+      sprite = obj.sprite
+      # Update sprite locations based on their bodies:
+      position = body.GetPosition()
+      sprite.position.x = position.x * 100
+      sprite.position.y = position.y * 100
+      sprite.rotation = body.GetAngle()
+
+  applyControls: ->
+    for id,player of @data.players
+      con = player.controls
+      body = @gameObjects.boxes[player.boxId].body
+      if con.forward
+        r = body.GetAngle()
+        f = 0.2 * body.GetMass()
+        v = vec2(f*Math.cos(r), f*Math.sin(r))
+        body.ApplyImpulse(v, body.GetWorldCenter())
+      if con.left
+        a = body.GetAngle()
+        body.SetAngle(a - 0.06)
+      if con.right
+        a = body.GetAngle()
+        body.SetAngle(a + 0.06)
+
+  toAttributes: ->
+    @captureGameObjectsAsData()
+    console.log "toAttributes", @data
+    @data
+
+  nextId: ->
+    nid = @data.nextId
+    @data.nextId += 1
+    nid
+
+  setupPhysics: ->
+    gravity = vec2(0,0)
+    @b2world = new Box2D.Dynamics.b2World(vec2(0,0), true)
+
+  syncDataToGameObjects: ->
+    # Boxes:
+    for boxId,boxData of @data.boxes
+      if !@gameObjects.boxes[boxId]
+        # A box exists in @data that is NOT represented in game objects
+        obj = {}
+        obj.body = @makeBoxBody(boxData)
+        obj.sprite = @makeBoxSprite(boxData)
+        window.local.pixi.stage.addChild(obj.sprite)
+        @gameObjects.boxes[boxId] = obj
+
+    for boxId,obj of @gameObjects.boxes
+      if !@data.boxes[boxId]
+        # A box game object exists for a box that has disappeared from @data
+        @b2world.DestroyBody(obj.body)
+        window.local.pixi.stage.removeChild(obj.sprite)
+
+  captureGameObjectsAsData: ->
+    # Boxes:
+    for boxId,boxData of @data.boxes
+      obj = @gameObjects.boxes[boxId]
+      pos = obj.body.GetPosition()
+      boxData.x = pos.x
+      boxData.y = pos.y
+      boxData.angle = obj.body.GetAngle()
+
+        
+  makeBoxBody: (boxData) ->
+    size = 0.5
+    linearDamping = 3
+    angularDamping = 3
+
+    polyFixture = new Box2D.Dynamics.b2FixtureDef()
+    polyFixture.shape = new Box2D.Collision.Shapes.b2PolygonShape()
+    polyFixture.density = 1
+    polyFixture.shape.SetAsBox(size,size)
+
+    bodyDef = new Box2D.Dynamics.b2BodyDef()
+    bodyDef.type = Box2D.Dynamics.b2Body.b2_dynamicBody
+    bodyDef.position.Set(boxData.x, boxData.y)
+    bodyDef.angle = boxData.angle
+
+    body = @b2world.CreateBody(bodyDef)
+    body.CreateFixture(polyFixture)
+    body.SetLinearDamping(linearDamping)
+    body.SetAngularDamping(angularDamping)
+
+    body
+        
+  makeBoxSprite: (boxData) ->
+    size = 0.5
+    box = new PIXI.Sprite(PIXI.Texture.fromFrame("pixibox_assets/box.jpg"))
+    box.i = 0
+    box.anchor.x = box.anchor.y = 0.5
+    box.scale.x = size * 2
+    box.scale.y = size * 2
+    box
+
+  updateControl: (id, action,value) ->
+    @data.players[id].controls[action] = value
+
+    
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 window.onload = ->
   setupStats()
   setupPixi()
 
-  
   loader = new PIXI.AssetLoader(imageAssets)
   loader.onComplete = ->
-    # setupSimulation()
-    setupPhysics()
+    setupSimulation()
     setupKeyboardController()
+    setupStopWatch()
     update()
   loader.load()
+
+setupStopWatch = ->
+  stopWatch = new StopWatch()
+  stopWatch.lap()
+  window.local.stopWatch = stopWatch
 
 setupSimulation = ->
   url = "http://#{location.hostname}:#{location.port}"
   simulation = SimSim.create.socketIOSimulation
     socketIO: io.connect(url)
     worldClass: TheWorld
+  window.local.simulation = simulation
 
 setupStats = ->
   container = document.createElement("div")
@@ -47,95 +212,41 @@ setupStats = ->
   stats = new Stats()
   container.appendChild(stats.domElement)
   stats.domElement.style.position = "absolute"
+
+  window.local.stats = stats
   
 setupPixi = ->
   stage = new PIXI.Stage(0xDDDDDD, true)
   renderer = PIXI.autoDetectRenderer(STAGE_WIDTH, STAGE_HEIGHT, undefined, false)
   document.body.appendChild(renderer.view)
 
-setupPhysics = ->
-  console.log "phys"
-  gravity = vec2(0,0)
-  world = new Box2D.Dynamics.b2World(gravity, true)
-
-  body = makeBoxBody(x: 4, y: 2, size: 0.5)
-  bodies.push body
-
-  sprite = makeBoxSprite(size: 0.5)
-  stage.addChild sprite
-  actors.push sprite
-
-  body = makeBoxBody(x: 6, y: 2, size: 0.25)
-  bodies.push body
-
-  sprite = makeBoxSprite(size: 0.25)
-  stage.addChild sprite
-  actors.push sprite
+  window.local.pixi.stage = stage
+  window.local.pixi.renderer = renderer
 
 setupKeyboardController = ->
   keyboardController = new KeyboardController(
     w: "forward"
-    a: "turnLeft"
-    d: "turnRight"
+    a: "left"
+    d: "right"
     s: "back"
   )
+  window.local.keyboardController = keyboardController
 
-makeBoxBody = (opts) ->
-  polyFixture = new Box2D.Dynamics.b2FixtureDef()
-  polyFixture.shape = new Box2D.Collision.Shapes.b2PolygonShape()
-  polyFixture.density = 1
-
-  polyFixture.shape.SetAsBox(opts.size,opts.size)
-
-  bodyDef = new Box2D.Dynamics.b2BodyDef()
-  bodyDef.type = Box2D.Dynamics.b2Body.b2_dynamicBody
-  bodyDef.position.Set(opts.x, opts.y)
-
-  body = world.CreateBody(bodyDef)
-  body.CreateFixture(polyFixture)
-  body.SetLinearDamping(3)
-  body.SetAngularDamping(3)
-
-  body
-
-makeBoxSprite = (opts) ->
-  box = new PIXI.Sprite(PIXI.Texture.fromFrame("pixibox_assets/box.jpg"))
-  box.i = 0
-  box.anchor.x = box.anchor.y = 0.5
-  box.scale.x = opts.size*2
-  box.scale.y = opts.size*2
-  box
 
 update = ->
   requestAnimationFrame(update)
-  
-  box = bodies[0]
-  keyboardController.update()
-  if keyboardController.isActive("forward")
-    r = box.GetAngle()
-    f = 0.2 * box.GetMass()
-    v = vec2(f*Math.cos(r), f*Math.sin(r))
-    box.ApplyImpulse(v, box.GetWorldCenter())
 
-  if keyboardController.isActive("turnRight")
-    a = bodies[0].GetAngle()
-    bodies[0].SetAngle(a+0.06)
-  if keyboardController.isActive("turnLeft")
-    a = bodies[0].GetAngle()
-    bodies[0].SetAngle(a-0.06)
+  elapsedSeconds = window.local.stopWatch.lap()
+  
+  sim = window.local.simulation
 
-  world.Step(1 / 60,  3,  3)
-  world.ClearForces()
+  for action,value of  window.local.keyboardController.update()
+    sim.worldProxy "updateControl", action, value
   
-  for i in [0...actors.length]
-    body  = bodies[i]
-    actor = actors[i]
-    position = body.GetPosition()
-    actor.position.x = position.x * 100
-    actor.position.y = position.y * 100
-    actor.rotation = body.GetAngle()
+  sim.update(elapsedSeconds)
+
   
-  renderer.render(stage)
-  stats.update()
+  window.local.pixi.renderer.render(window.local.pixi.stage)
+  window.local.stats.update()
 
 

@@ -127,7 +127,9 @@ module.exports = KeyboardController;
 
 
 },{}],3:[function(require,module,exports){
-var KeyboardController, METER, STAGE_HEIGHT, STAGE_WIDTH, SimSim, WorldBase, actors, bodies, imageAssets, keyboardController, makeBoxBody, makeBoxSprite, renderer, setupKeyboardController, setupPhysics, setupPixi, setupSimulation, setupStats, simulation, stage, stats, update, vec2, world;
+var KeyboardController, STAGE_HEIGHT, STAGE_WIDTH, SimSim, StopWatch, TheWorld, WorldBase, imageAssets, setupKeyboardController, setupPixi, setupSimulation, setupStats, setupStopWatch, update, vec2,
+  __hasProp = {}.hasOwnProperty,
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
 KeyboardController = require('./keyboard_controller.coffee');
 
@@ -143,25 +145,245 @@ STAGE_WIDTH = window.innerWidth;
 
 STAGE_HEIGHT = window.innerHeight;
 
-METER = 100;
+StopWatch = (function() {
+  function StopWatch() {
+    this.millis = this.currentTimeMillis;
+  }
 
-bodies = [];
+  StopWatch.prototype.lap = function() {
+    var newMillis;
+    newMillis = this.currentTimeMillis;
+    this.lapMillis = newMillis - this.millis;
+    this.millis = newMillis;
+    return this.lapSeconds();
+  };
 
-actors = [];
+  StopWatch.prototype.currentTimeMillis = function() {
+    return new Date().getTime();
+  };
 
-stage = null;
+  StopWatch.prototype.lapSeconds = function() {
+    return this.lapMillis / 1000.0;
+  };
 
-renderer = null;
+  return StopWatch;
 
-world = null;
+})();
 
-stats = null;
-
-keyboardController = null;
-
-simulation = null;
+window.local = {
+  simulation: null,
+  stopWatch: null,
+  pixi: {
+    stage: null,
+    renderer: null,
+    sprites: []
+  },
+  keyboardController: null,
+  stats: null
+};
 
 imageAssets = ["pixibox_assets/ball.png", "pixibox_assets/box.jpg"];
+
+TheWorld = (function(_super) {
+  __extends(TheWorld, _super);
+
+  function TheWorld(data) {
+    if (data == null) {
+      data = null;
+    }
+    console.log("New TheWorld");
+    this.data = data || {
+      nextId: 0,
+      players: {},
+      boxes: {}
+    };
+    this.gameObjects = {
+      boxes: {}
+    };
+    this.setupPhysics();
+    this.syncDataToGameObjects();
+  }
+
+  TheWorld.prototype.playerJoined = function(id) {
+    var boxId;
+    boxId = "B" + (this.nextId());
+    this.data.boxes[boxId] = {
+      x: 4,
+      y: 2,
+      angle: 0
+    };
+    this.data.players[id] = {
+      boxId: boxId,
+      controls: {
+        forward: false,
+        left: false,
+        right: false
+      }
+    };
+    this.syncDataToGameObjects();
+    return console.log("Player " + id + " JOINED, @data is now", this.data);
+  };
+
+  TheWorld.prototype.playerLeft = function(id) {
+    var boxId;
+    if (boxId = this.data.players[id].boxId) {
+      delete this.data.boxes[boxId];
+    }
+    delete this.data.players[id];
+    this.syncDataToGameObjects();
+    return console.log("Player " + id + " LEFT, @data is now", this.data);
+  };
+
+  TheWorld.prototype.step = function(dt) {
+    this.applyControls();
+    this.b2world.Step(dt, 3, 3);
+    this.b2world.ClearForces();
+    return this.moveSprites();
+  };
+
+  TheWorld.prototype.moveSprites = function() {
+    var body, boxId, obj, position, sprite, _ref, _results;
+    _ref = this.gameObjects.boxes;
+    _results = [];
+    for (boxId in _ref) {
+      obj = _ref[boxId];
+      body = obj.body;
+      sprite = obj.sprite;
+      position = body.GetPosition();
+      sprite.position.x = position.x * 100;
+      sprite.position.y = position.y * 100;
+      _results.push(sprite.rotation = body.GetAngle());
+    }
+    return _results;
+  };
+
+  TheWorld.prototype.applyControls = function() {
+    var a, body, con, f, id, player, r, v, _ref, _results;
+    _ref = this.data.players;
+    _results = [];
+    for (id in _ref) {
+      player = _ref[id];
+      con = player.controls;
+      body = this.gameObjects.boxes[player.boxId].body;
+      if (con.forward) {
+        r = body.GetAngle();
+        f = 0.2 * body.GetMass();
+        v = vec2(f * Math.cos(r), f * Math.sin(r));
+        body.ApplyImpulse(v, body.GetWorldCenter());
+      }
+      if (con.left) {
+        a = body.GetAngle();
+        body.SetAngle(a - 0.06);
+      }
+      if (con.right) {
+        a = body.GetAngle();
+        _results.push(body.SetAngle(a + 0.06));
+      } else {
+        _results.push(void 0);
+      }
+    }
+    return _results;
+  };
+
+  TheWorld.prototype.toAttributes = function() {
+    this.captureGameObjectsAsData();
+    console.log("toAttributes", this.data);
+    return this.data;
+  };
+
+  TheWorld.prototype.nextId = function() {
+    var nid;
+    nid = this.data.nextId;
+    this.data.nextId += 1;
+    return nid;
+  };
+
+  TheWorld.prototype.setupPhysics = function() {
+    var gravity;
+    gravity = vec2(0, 0);
+    return this.b2world = new Box2D.Dynamics.b2World(vec2(0, 0), true);
+  };
+
+  TheWorld.prototype.syncDataToGameObjects = function() {
+    var boxData, boxId, obj, _ref, _ref1, _results;
+    _ref = this.data.boxes;
+    for (boxId in _ref) {
+      boxData = _ref[boxId];
+      if (!this.gameObjects.boxes[boxId]) {
+        obj = {};
+        obj.body = this.makeBoxBody(boxData);
+        obj.sprite = this.makeBoxSprite(boxData);
+        window.local.pixi.stage.addChild(obj.sprite);
+        this.gameObjects.boxes[boxId] = obj;
+      }
+    }
+    _ref1 = this.gameObjects.boxes;
+    _results = [];
+    for (boxId in _ref1) {
+      obj = _ref1[boxId];
+      if (!this.data.boxes[boxId]) {
+        this.b2world.DestroyBody(obj.body);
+        _results.push(window.local.pixi.stage.removeChild(obj.sprite));
+      } else {
+        _results.push(void 0);
+      }
+    }
+    return _results;
+  };
+
+  TheWorld.prototype.captureGameObjectsAsData = function() {
+    var boxData, boxId, obj, pos, _ref, _results;
+    _ref = this.data.boxes;
+    _results = [];
+    for (boxId in _ref) {
+      boxData = _ref[boxId];
+      obj = this.gameObjects.boxes[boxId];
+      pos = obj.body.GetPosition();
+      boxData.x = pos.x;
+      boxData.y = pos.y;
+      _results.push(boxData.angle = obj.body.GetAngle());
+    }
+    return _results;
+  };
+
+  TheWorld.prototype.makeBoxBody = function(boxData) {
+    var angularDamping, body, bodyDef, linearDamping, polyFixture, size;
+    size = 0.5;
+    linearDamping = 3;
+    angularDamping = 3;
+    polyFixture = new Box2D.Dynamics.b2FixtureDef();
+    polyFixture.shape = new Box2D.Collision.Shapes.b2PolygonShape();
+    polyFixture.density = 1;
+    polyFixture.shape.SetAsBox(size, size);
+    bodyDef = new Box2D.Dynamics.b2BodyDef();
+    bodyDef.type = Box2D.Dynamics.b2Body.b2_dynamicBody;
+    bodyDef.position.Set(boxData.x, boxData.y);
+    bodyDef.angle = boxData.angle;
+    body = this.b2world.CreateBody(bodyDef);
+    body.CreateFixture(polyFixture);
+    body.SetLinearDamping(linearDamping);
+    body.SetAngularDamping(angularDamping);
+    return body;
+  };
+
+  TheWorld.prototype.makeBoxSprite = function(boxData) {
+    var box, size;
+    size = 0.5;
+    box = new PIXI.Sprite(PIXI.Texture.fromFrame("pixibox_assets/box.jpg"));
+    box.i = 0;
+    box.anchor.x = box.anchor.y = 0.5;
+    box.scale.x = size * 2;
+    box.scale.y = size * 2;
+    return box;
+  };
+
+  TheWorld.prototype.updateControl = function(id, action, value) {
+    return this.data.players[id].controls[action] = value;
+  };
+
+  return TheWorld;
+
+})(WorldBase);
 
 window.onload = function() {
   var loader;
@@ -169,132 +391,74 @@ window.onload = function() {
   setupPixi();
   loader = new PIXI.AssetLoader(imageAssets);
   loader.onComplete = function() {
-    setupPhysics();
+    setupSimulation();
     setupKeyboardController();
+    setupStopWatch();
     return update();
   };
   return loader.load();
 };
 
+setupStopWatch = function() {
+  var stopWatch;
+  stopWatch = new StopWatch();
+  stopWatch.lap();
+  return window.local.stopWatch = stopWatch;
+};
+
 setupSimulation = function() {
-  var url;
+  var simulation, url;
   url = "http://" + location.hostname + ":" + location.port;
-  return simulation = SimSim.create.socketIOSimulation({
+  simulation = SimSim.create.socketIOSimulation({
     socketIO: io.connect(url),
     worldClass: TheWorld
   });
+  return window.local.simulation = simulation;
 };
 
 setupStats = function() {
-  var container;
+  var container, stats;
   container = document.createElement("div");
   document.body.appendChild(container);
   stats = new Stats();
   container.appendChild(stats.domElement);
-  return stats.domElement.style.position = "absolute";
+  stats.domElement.style.position = "absolute";
+  return window.local.stats = stats;
 };
 
 setupPixi = function() {
+  var renderer, stage;
   stage = new PIXI.Stage(0xDDDDDD, true);
   renderer = PIXI.autoDetectRenderer(STAGE_WIDTH, STAGE_HEIGHT, void 0, false);
-  return document.body.appendChild(renderer.view);
-};
-
-setupPhysics = function() {
-  var body, gravity, sprite;
-  console.log("phys");
-  gravity = vec2(0, 0);
-  world = new Box2D.Dynamics.b2World(gravity, true);
-  body = makeBoxBody({
-    x: 4,
-    y: 2,
-    size: 0.5
-  });
-  bodies.push(body);
-  sprite = makeBoxSprite({
-    size: 0.5
-  });
-  stage.addChild(sprite);
-  actors.push(sprite);
-  body = makeBoxBody({
-    x: 6,
-    y: 2,
-    size: 0.25
-  });
-  bodies.push(body);
-  sprite = makeBoxSprite({
-    size: 0.25
-  });
-  stage.addChild(sprite);
-  return actors.push(sprite);
+  document.body.appendChild(renderer.view);
+  window.local.pixi.stage = stage;
+  return window.local.pixi.renderer = renderer;
 };
 
 setupKeyboardController = function() {
-  return keyboardController = new KeyboardController({
+  var keyboardController;
+  keyboardController = new KeyboardController({
     w: "forward",
-    a: "turnLeft",
-    d: "turnRight",
+    a: "left",
+    d: "right",
     s: "back"
   });
-};
-
-makeBoxBody = function(opts) {
-  var body, bodyDef, polyFixture;
-  polyFixture = new Box2D.Dynamics.b2FixtureDef();
-  polyFixture.shape = new Box2D.Collision.Shapes.b2PolygonShape();
-  polyFixture.density = 1;
-  polyFixture.shape.SetAsBox(opts.size, opts.size);
-  bodyDef = new Box2D.Dynamics.b2BodyDef();
-  bodyDef.type = Box2D.Dynamics.b2Body.b2_dynamicBody;
-  bodyDef.position.Set(opts.x, opts.y);
-  body = world.CreateBody(bodyDef);
-  body.CreateFixture(polyFixture);
-  body.SetLinearDamping(3);
-  body.SetAngularDamping(3);
-  return body;
-};
-
-makeBoxSprite = function(opts) {
-  var box;
-  box = new PIXI.Sprite(PIXI.Texture.fromFrame("pixibox_assets/box.jpg"));
-  box.i = 0;
-  box.anchor.x = box.anchor.y = 0.5;
-  box.scale.x = opts.size * 2;
-  box.scale.y = opts.size * 2;
-  return box;
+  return window.local.keyboardController = keyboardController;
 };
 
 update = function() {
-  var a, actor, body, box, f, i, position, r, v, _i, _ref;
+  var action, elapsedSeconds, sim, value, _ref;
   requestAnimationFrame(update);
-  box = bodies[0];
-  keyboardController.update();
-  if (keyboardController.isActive("forward")) {
-    r = box.GetAngle();
-    f = 0.2 * box.GetMass();
-    v = vec2(f * Math.cos(r), f * Math.sin(r));
-    box.ApplyImpulse(v, box.GetWorldCenter());
+  elapsedSeconds = window.local.stopWatch.lap();
+  sim = window.local.simulation;
+  _ref = window.local.keyboardController.update();
+  for (action in _ref) {
+    value = _ref[action];
+    sim.worldProxy("updateControl", action, value);
   }
-  if (keyboardController.isActive("turnRight")) {
-    a = bodies[0].GetAngle();
-    bodies[0].SetAngle(a + 0.06);
-  }
-  if (keyboardController.isActive("turnLeft")) {
-    a = bodies[0].GetAngle();
-    bodies[0].SetAngle(a - 0.06);
-  }
-  world.Step(1 / 60, 3, 3);
-  world.ClearForces();
-  for (i = _i = 0, _ref = actors.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
-    body = bodies[i];
-    actor = actors[i];
-    position = body.GetPosition();
-    actor.position.x = position.x * 100;
-    actor.position.y = position.y * 100;
-    actor.rotation = body.GetAngle();
-  }
-  renderer.render(stage);
-  return stats.update();
+  sim.update(elapsedSeconds);
+  window.local.pixi.renderer.render(window.local.pixi.stage);
+  return window.local.stats.update();
 };
 
 
@@ -670,10 +834,10 @@ Simulation = (function() {
     return this.client.sendEvent(this.userEventSerializer.pack(event));
   };
 
-  Simulation.prototype.update = function(seconds) {
+  Simulation.prototype.update = function(timeInSeconds) {
     var elapsedTurnTime;
     if (this.simState) {
-      elapsedTurnTime = (seconds - this.lastTurnTime).fixed();
+      elapsedTurnTime = (timeInSeconds - this.lastTurnTime).fixed();
       this.turnCalculator.stepUntilTurnTime(this.simState, elapsedTurnTime);
     }
     return this.client.update((function(_this) {
@@ -683,7 +847,7 @@ Simulation = (function() {
           case 'GameEvent::TurnComplete':
             _this._debug("GameEvent::TurnComplete.... simState is", _this.simState);
             _this.turnCalculator.advanceTurn(_this.simState);
-            _this.lastTurnTime = seconds;
+            _this.lastTurnTime = timeInSeconds;
             _ref = gameEvent.events;
             for (_i = 0, _len = _ref.length; _i < _len; _i++) {
               simEvent = _ref[_i];
@@ -714,6 +878,7 @@ Simulation = (function() {
             _this.simState = _this.simulationStateSerializer.unpackSimulationState(gameEvent.gamestate);
             return _this._debug("GameEvent::StartGame.... gameEvent is", gameEvent, "simState is", _this.simState);
           case 'GameEvent::GamestateRequest':
+            console.log("Processing gamestate request");
             _this.simState || (_this.simState = _this.simulationStateFactory.createSimulationState());
             packedSimState = _this.simulationStateSerializer.packSimulationState(_this.simState);
             return gameEvent.gamestateClosure(packedSimState);
