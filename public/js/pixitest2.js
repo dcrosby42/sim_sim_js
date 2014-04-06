@@ -168,7 +168,7 @@ TheWorld = (function(_super) {
     if (data == null) {
       data = null;
     }
-    this.thrust = 0.05;
+    this.thrust = 0.2;
     this.turnSpeed = 0.06;
     this.data = data || {
       nextId: 0,
@@ -332,8 +332,8 @@ TheWorld = (function(_super) {
   TheWorld.prototype.makeBoxBody = function(boxData) {
     var angularDamping, body, bodyDef, linearDamping, polyFixture, size;
     size = 0.5;
-    linearDamping = 0;
-    angularDamping = 0;
+    linearDamping = 3;
+    angularDamping = 3;
     polyFixture = new Box2D.Dynamics.b2FixtureDef();
     polyFixture.shape = new Box2D.Collision.Shapes.b2PolygonShape();
     polyFixture.density = 1;

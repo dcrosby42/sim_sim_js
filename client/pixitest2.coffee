@@ -26,7 +26,7 @@ imageAssets = [
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 class TheWorld extends WorldBase
   constructor: (data=null) ->
-    @thrust = 0.05
+    @thrust = 0.2
     @turnSpeed = 0.06
 
     @data = data || {
@@ -140,8 +140,8 @@ class TheWorld extends WorldBase
         
   makeBoxBody: (boxData) ->
     size = 0.5
-    linearDamping = 0
-    angularDamping = 0
+    linearDamping = 3
+    angularDamping = 3
 
     polyFixture = new Box2D.Dynamics.b2FixtureDef()
     polyFixture.shape = new Box2D.Collision.Shapes.b2PolygonShape()
