@@ -1,3 +1,4 @@
+StopWatch = require './stop_watch.coffee'
 KeyboardController = require './keyboard_controller.coffee'
 SimSim = require './simult_sim/index.coffee'
 WorldBase = require './simult_sim/world_base.coffee'
@@ -6,22 +7,6 @@ vec2 = (x,y) -> new Box2D.Common.Math.b2Vec2(x,y)
 
 STAGE_WIDTH = window.innerWidth
 STAGE_HEIGHT = window.innerHeight
-
-class StopWatch
-  constructor: ->
-    @millis = @currentTimeMillis
-
-  lap: ->
-    newMillis = @currentTimeMillis
-    @lapMillis = newMillis - @millis
-    @millis = newMillis
-    @lapSeconds()
-
-  currentTimeMillis: ->
-    new Date().getTime()
-
-  lapSeconds: ->
-    @lapMillis / 1000.0
 
 window.local =
   simulation: null
@@ -41,7 +26,9 @@ imageAssets = [
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 class TheWorld extends WorldBase
   constructor: (data=null) ->
-    console.log "New TheWorld"
+    @thrust = 0.05
+    @turnSpeed = 0.06
+
     @data = data || {
       nextId: 0
       players: {}
@@ -55,9 +42,11 @@ class TheWorld extends WorldBase
   playerJoined: (id) ->
     boxId = "B#{@nextId()}"
     @data.boxes[boxId] = {
-      x: 4
-      y: 2
+      x: 4.0
+      y: 2.0
       angle: 0
+      vx: 0.0
+      vy: 0.0
     }
     @data.players[id] = { boxId: boxId, controls: {forward:false,left:false,right:false} }
     @syncDataToGameObjects()
@@ -95,15 +84,15 @@ class TheWorld extends WorldBase
       body = @gameObjects.boxes[player.boxId].body
       if con.forward
         r = body.GetAngle()
-        f = 0.2 * body.GetMass()
+        f = @thrust * body.GetMass()
         v = vec2(f*Math.cos(r), f*Math.sin(r))
         body.ApplyImpulse(v, body.GetWorldCenter())
       if con.left
         a = body.GetAngle()
-        body.SetAngle(a - 0.06)
+        body.SetAngle(a - @turnSpeed)
       if con.right
         a = body.GetAngle()
-        body.SetAngle(a + 0.06)
+        body.SetAngle(a + @turnSpeed)
 
   toAttributes: ->
     @captureGameObjectsAsData()
@@ -141,15 +130,18 @@ class TheWorld extends WorldBase
     for boxId,boxData of @data.boxes
       obj = @gameObjects.boxes[boxId]
       pos = obj.body.GetPosition()
+      vel = obj.body.GetLinearVelocity()
       boxData.x = pos.x
       boxData.y = pos.y
       boxData.angle = obj.body.GetAngle()
+      boxData.vx = vel.x
+      boxData.vy = vel.y
 
         
   makeBoxBody: (boxData) ->
     size = 0.5
-    linearDamping = 3
-    angularDamping = 3
+    linearDamping = 0
+    angularDamping = 0
 
     polyFixture = new Box2D.Dynamics.b2FixtureDef()
     polyFixture.shape = new Box2D.Collision.Shapes.b2PolygonShape()
@@ -160,6 +152,8 @@ class TheWorld extends WorldBase
     bodyDef.type = Box2D.Dynamics.b2Body.b2_dynamicBody
     bodyDef.position.Set(boxData.x, boxData.y)
     bodyDef.angle = boxData.angle
+    bodyDef.linearVelocity = vec2(boxData.vx,boxData.vy)
+    bodyDef.awake = true
 
     body = @b2world.CreateBody(bodyDef)
     body.CreateFixture(polyFixture)

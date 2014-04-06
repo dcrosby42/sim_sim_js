@@ -131,6 +131,8 @@ var KeyboardController, STAGE_HEIGHT, STAGE_WIDTH, SimSim, StopWatch, TheWorld, 
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
+StopWatch = require('./stop_watch.coffee');
+
 KeyboardController = require('./keyboard_controller.coffee');
 
 SimSim = require('./simult_sim/index.coffee');
@@ -144,31 +146,6 @@ vec2 = function(x, y) {
 STAGE_WIDTH = window.innerWidth;
 
 STAGE_HEIGHT = window.innerHeight;
-
-StopWatch = (function() {
-  function StopWatch() {
-    this.millis = this.currentTimeMillis;
-  }
-
-  StopWatch.prototype.lap = function() {
-    var newMillis;
-    newMillis = this.currentTimeMillis;
-    this.lapMillis = newMillis - this.millis;
-    this.millis = newMillis;
-    return this.lapSeconds();
-  };
-
-  StopWatch.prototype.currentTimeMillis = function() {
-    return new Date().getTime();
-  };
-
-  StopWatch.prototype.lapSeconds = function() {
-    return this.lapMillis / 1000.0;
-  };
-
-  return StopWatch;
-
-})();
 
 window.local = {
   simulation: null,
@@ -191,7 +168,8 @@ TheWorld = (function(_super) {
     if (data == null) {
       data = null;
     }
-    console.log("New TheWorld");
+    this.thrust = 0.05;
+    this.turnSpeed = 0.06;
     this.data = data || {
       nextId: 0,
       players: {},
@@ -208,9 +186,11 @@ TheWorld = (function(_super) {
     var boxId;
     boxId = "B" + (this.nextId());
     this.data.boxes[boxId] = {
-      x: 4,
-      y: 2,
-      angle: 0
+      x: 4.0,
+      y: 2.0,
+      angle: 0,
+      vx: 0.0,
+      vy: 0.0
     };
     this.data.players[id] = {
       boxId: boxId,
@@ -267,17 +247,17 @@ TheWorld = (function(_super) {
       body = this.gameObjects.boxes[player.boxId].body;
       if (con.forward) {
         r = body.GetAngle();
-        f = 0.2 * body.GetMass();
+        f = this.thrust * body.GetMass();
         v = vec2(f * Math.cos(r), f * Math.sin(r));
         body.ApplyImpulse(v, body.GetWorldCenter());
       }
       if (con.left) {
         a = body.GetAngle();
-        body.SetAngle(a - 0.06);
+        body.SetAngle(a - this.turnSpeed);
       }
       if (con.right) {
         a = body.GetAngle();
-        _results.push(body.SetAngle(a + 0.06));
+        _results.push(body.SetAngle(a + this.turnSpeed));
       } else {
         _results.push(void 0);
       }
@@ -332,16 +312,19 @@ TheWorld = (function(_super) {
   };
 
   TheWorld.prototype.captureGameObjectsAsData = function() {
-    var boxData, boxId, obj, pos, _ref, _results;
+    var boxData, boxId, obj, pos, vel, _ref, _results;
     _ref = this.data.boxes;
     _results = [];
     for (boxId in _ref) {
       boxData = _ref[boxId];
       obj = this.gameObjects.boxes[boxId];
       pos = obj.body.GetPosition();
+      vel = obj.body.GetLinearVelocity();
       boxData.x = pos.x;
       boxData.y = pos.y;
-      _results.push(boxData.angle = obj.body.GetAngle());
+      boxData.angle = obj.body.GetAngle();
+      boxData.vx = vel.x;
+      _results.push(boxData.vy = vel.y);
     }
     return _results;
   };
@@ -349,8 +332,8 @@ TheWorld = (function(_super) {
   TheWorld.prototype.makeBoxBody = function(boxData) {
     var angularDamping, body, bodyDef, linearDamping, polyFixture, size;
     size = 0.5;
-    linearDamping = 3;
-    angularDamping = 3;
+    linearDamping = 0;
+    angularDamping = 0;
     polyFixture = new Box2D.Dynamics.b2FixtureDef();
     polyFixture.shape = new Box2D.Collision.Shapes.b2PolygonShape();
     polyFixture.density = 1;
@@ -359,6 +342,8 @@ TheWorld = (function(_super) {
     bodyDef.type = Box2D.Dynamics.b2Body.b2_dynamicBody;
     bodyDef.position.Set(boxData.x, boxData.y);
     bodyDef.angle = boxData.angle;
+    bodyDef.linearVelocity = vec2(boxData.vx, boxData.vy);
+    bodyDef.awake = true;
     body = this.b2world.CreateBody(bodyDef);
     body.CreateFixture(polyFixture);
     body.SetLinearDamping(linearDamping);
@@ -462,7 +447,7 @@ update = function() {
 };
 
 
-},{"./keyboard_controller.coffee":2,"./simult_sim/index.coffee":8,"./simult_sim/world_base.coffee":17}],4:[function(require,module,exports){
+},{"./keyboard_controller.coffee":2,"./simult_sim/index.coffee":8,"./simult_sim/world_base.coffee":17,"./stop_watch.coffee":18}],4:[function(require,module,exports){
 var Client, EventEmitter,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
@@ -1157,6 +1142,37 @@ WorldBase = (function() {
 })();
 
 module.exports = WorldBase;
+
+
+},{}],18:[function(require,module,exports){
+var StopWatch;
+
+StopWatch = (function() {
+  function StopWatch() {
+    this.millis = this.currentTimeMillis;
+  }
+
+  StopWatch.prototype.lap = function() {
+    var newMillis;
+    newMillis = this.currentTimeMillis;
+    this.lapMillis = newMillis - this.millis;
+    this.millis = newMillis;
+    return this.lapSeconds();
+  };
+
+  StopWatch.prototype.currentTimeMillis = function() {
+    return new Date().getTime();
+  };
+
+  StopWatch.prototype.lapSeconds = function() {
+    return this.lapMillis / 1000.0;
+  };
+
+  return StopWatch;
+
+})();
+
+module.exports = StopWatch;
 
 
 },{}]},{},[3])
