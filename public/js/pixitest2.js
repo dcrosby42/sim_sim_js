@@ -179,7 +179,7 @@ TheWorld = (function(_super) {
       boxes: {}
     };
     this.setupPhysics();
-    this.syncDataToGameObjects();
+    this.syncNeeded = true;
   }
 
   TheWorld.prototype.playerJoined = function(id) {
@@ -200,7 +200,7 @@ TheWorld = (function(_super) {
         right: false
       }
     };
-    this.syncDataToGameObjects();
+    this.syncNeeded = true;
     return console.log("Player " + id + " JOINED, @data is now", this.data);
   };
 
@@ -210,11 +210,12 @@ TheWorld = (function(_super) {
       delete this.data.boxes[boxId];
     }
     delete this.data.players[id];
-    this.syncDataToGameObjects();
+    this.syncNeeded = true;
     return console.log("Player " + id + " LEFT, @data is now", this.data);
   };
 
   TheWorld.prototype.step = function(dt) {
+    this.syncDataToGameObjects();
     this.applyControls();
     this.b2world.Step(dt, 3, 3);
     this.b2world.ClearForces();
@@ -267,7 +268,6 @@ TheWorld = (function(_super) {
 
   TheWorld.prototype.toAttributes = function() {
     this.captureGameObjectsAsData();
-    console.log("toAttributes", this.data);
     return this.data;
   };
 
@@ -285,16 +285,26 @@ TheWorld = (function(_super) {
   };
 
   TheWorld.prototype.syncDataToGameObjects = function() {
-    var boxData, boxId, obj, _ref, _ref1, _results;
+    var boxData, boxId, e, obj, _ref, _ref1, _results;
+    if (!this.syncNeeded) {
+      return;
+    }
+    this.syncNeeded = false;
+    console.log("Syncing data to game objects");
     _ref = this.data.boxes;
     for (boxId in _ref) {
       boxData = _ref[boxId];
       if (!this.gameObjects.boxes[boxId]) {
-        obj = {};
-        obj.body = this.makeBoxBody(boxData);
-        obj.sprite = this.makeBoxSprite(boxData);
-        window.local.pixi.stage.addChild(obj.sprite);
-        this.gameObjects.boxes[boxId] = obj;
+        try {
+          obj = {};
+          obj.body = this.makeBoxBody(boxData);
+          obj.sprite = this.makeBoxSprite(boxData);
+          window.local.pixi.stage.addChild(obj.sprite);
+          this.gameObjects.boxes[boxId] = obj;
+        } catch (_error) {
+          e = _error;
+          console.log("OOPS adding box " + boxId, e);
+        }
       }
     }
     _ref1 = this.gameObjects.boxes;
@@ -302,8 +312,14 @@ TheWorld = (function(_super) {
     for (boxId in _ref1) {
       obj = _ref1[boxId];
       if (!this.data.boxes[boxId]) {
-        this.b2world.DestroyBody(obj.body);
-        _results.push(window.local.pixi.stage.removeChild(obj.sprite));
+        try {
+          this.b2world.DestroyBody(obj.body);
+          window.local.pixi.stage.removeChild(obj.sprite);
+          _results.push(delete this.gameObjects.boxes[boxId]);
+        } catch (_error) {
+          e = _error;
+          _results.push(console.log("OOPS removing box " + boxId, e));
+        }
       } else {
         _results.push(void 0);
       }

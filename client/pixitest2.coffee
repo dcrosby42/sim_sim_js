@@ -37,7 +37,7 @@ class TheWorld extends WorldBase
     @gameObjects =
       boxes: {}
     @setupPhysics()
-    @syncDataToGameObjects()
+    @syncNeeded = true
 
   playerJoined: (id) ->
     boxId = "B#{@nextId()}"
@@ -49,17 +49,18 @@ class TheWorld extends WorldBase
       vy: 0.0
     }
     @data.players[id] = { boxId: boxId, controls: {forward:false,left:false,right:false} }
-    @syncDataToGameObjects()
+    @syncNeeded = true
     console.log "Player #{id} JOINED, @data is now", @data
 
   playerLeft: (id) ->
     if boxId = @data.players[id].boxId
       delete @data.boxes[boxId]
     delete @data.players[id]
-    @syncDataToGameObjects()
+    @syncNeeded = true
     console.log "Player #{id} LEFT, @data is now", @data
     
   step: (dt) ->
+    @syncDataToGameObjects()
     @applyControls()
 
     # Step the physics simulation:
@@ -96,8 +97,7 @@ class TheWorld extends WorldBase
 
   toAttributes: ->
     @captureGameObjectsAsData()
-    console.log "toAttributes", @data
-    @data
+    return @data
 
   nextId: ->
     nid = @data.nextId
@@ -109,21 +109,32 @@ class TheWorld extends WorldBase
     @b2world = new Box2D.Dynamics.b2World(vec2(0,0), true)
 
   syncDataToGameObjects: ->
+    return unless @syncNeeded
+    @syncNeeded=false
+    console.log "Syncing data to game objects"
     # Boxes:
     for boxId,boxData of @data.boxes
       if !@gameObjects.boxes[boxId]
-        # A box exists in @data that is NOT represented in game objects
-        obj = {}
-        obj.body = @makeBoxBody(boxData)
-        obj.sprite = @makeBoxSprite(boxData)
-        window.local.pixi.stage.addChild(obj.sprite)
-        @gameObjects.boxes[boxId] = obj
+        try
+          # A box exists in @data that is NOT represented in game objects
+          obj = {}
+          obj.body = @makeBoxBody(boxData)
+          obj.sprite = @makeBoxSprite(boxData)
+          window.local.pixi.stage.addChild(obj.sprite)
+          @gameObjects.boxes[boxId] = obj
+        catch e
+          console.log "OOPS adding box #{boxId}", e
 
     for boxId,obj of @gameObjects.boxes
       if !@data.boxes[boxId]
-        # A box game object exists for a box that has disappeared from @data
-        @b2world.DestroyBody(obj.body)
-        window.local.pixi.stage.removeChild(obj.sprite)
+        try
+          # A box game object exists for a box that has disappeared from @data
+          @b2world.DestroyBody(obj.body)
+          window.local.pixi.stage.removeChild(obj.sprite)
+          delete @gameObjects.boxes[boxId]
+        catch e
+          console.log "OOPS removing box #{boxId}", e
+
 
   captureGameObjectsAsData: ->
     # Boxes:

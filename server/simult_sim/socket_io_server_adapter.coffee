@@ -20,7 +20,12 @@ class SocketIOServerAdapter extends EventEmitter
     @clientIds.length
 
   send: (id,data) ->
-    @_clients[id].emit 'data', data
+    client = @_clients[id]
+    if client
+      @_clients[id].emit 'data', data
+    else
+      console.log "SocketIOServerAdapter#send('#{id}'): No client with that id. Wanted to send data:", data
+
 
   broadcast: (data) ->
     @socketIO.sockets.emit 'data', data
