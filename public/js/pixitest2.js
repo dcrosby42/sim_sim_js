@@ -127,7 +127,7 @@ module.exports = KeyboardController;
 
 
 },{}],3:[function(require,module,exports){
-var KeyboardController, STAGE_HEIGHT, STAGE_WIDTH, SimSim, StopWatch, TheWorld, WorldBase, imageAssets, setupKeyboardController, setupPixi, setupSimulation, setupStats, setupStopWatch, update, vec2,
+var KeyboardController, PIover2, STAGE_HEIGHT, STAGE_WIDTH, SimSim, StopWatch, TheWorld, WorldBase, imageAssets, setupKeyboardController, setupPixi, setupSimulation, setupStats, setupStopWatch, update, vec2,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -142,6 +142,8 @@ WorldBase = require('./simult_sim/world_base.coffee');
 vec2 = function(x, y) {
   return new Box2D.Common.Math.b2Vec2(x, y);
 };
+
+PIover2 = Math.PI / 2;
 
 STAGE_WIDTH = window.innerWidth;
 
@@ -159,7 +161,7 @@ window.local = {
   stats: null
 };
 
-imageAssets = ["pixibox_assets/ball.png", "pixibox_assets/box.jpg"];
+imageAssets = ["pixibox_assets/ball.png", "pixibox_assets/box.jpg", "pixibox_assets/bumpercat_red.png"];
 
 TheWorld = (function(_super) {
   __extends(TheWorld, _super);
@@ -233,7 +235,7 @@ TheWorld = (function(_super) {
       position = body.GetPosition();
       sprite.position.x = position.x * 100;
       sprite.position.y = position.y * 100;
-      _results.push(sprite.rotation = body.GetAngle());
+      _results.push(sprite.rotation = body.GetAngle() + PIover2);
     }
     return _results;
   };
@@ -347,13 +349,13 @@ TheWorld = (function(_super) {
 
   TheWorld.prototype.makeBoxBody = function(boxData) {
     var angularDamping, body, bodyDef, linearDamping, polyFixture, size;
-    size = 0.5;
+    size = 1;
     linearDamping = 3;
     angularDamping = 3;
     polyFixture = new Box2D.Dynamics.b2FixtureDef();
     polyFixture.shape = new Box2D.Collision.Shapes.b2PolygonShape();
     polyFixture.density = 1;
-    polyFixture.shape.SetAsBox(size, size);
+    polyFixture.shape.SetAsBox(0.71, 0.4);
     bodyDef = new Box2D.Dynamics.b2BodyDef();
     bodyDef.type = Box2D.Dynamics.b2Body.b2_dynamicBody;
     bodyDef.position.Set(boxData.x, boxData.y);
@@ -369,12 +371,12 @@ TheWorld = (function(_super) {
 
   TheWorld.prototype.makeBoxSprite = function(boxData) {
     var box, size;
-    size = 0.5;
-    box = new PIXI.Sprite(PIXI.Texture.fromFrame("pixibox_assets/box.jpg"));
+    size = 1;
+    box = new PIXI.Sprite(PIXI.Texture.fromFrame("pixibox_assets/bumpercat_red.png"));
     box.i = 0;
     box.anchor.x = box.anchor.y = 0.5;
-    box.scale.x = size * 2;
-    box.scale.y = size * 2;
+    box.scale.x = size;
+    box.scale.y = size;
     return box;
   };
 

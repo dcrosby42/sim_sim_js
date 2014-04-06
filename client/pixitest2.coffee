@@ -5,6 +5,8 @@ WorldBase = require './simult_sim/world_base.coffee'
         
 vec2 = (x,y) -> new Box2D.Common.Math.b2Vec2(x,y)
 
+PIover2 = Math.PI/2
+
 STAGE_WIDTH = window.innerWidth
 STAGE_HEIGHT = window.innerHeight
 
@@ -21,6 +23,7 @@ window.local =
 imageAssets = [
   "pixibox_assets/ball.png",
   "pixibox_assets/box.jpg"
+  "pixibox_assets/bumpercat_red.png"
 ]
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
@@ -77,7 +80,7 @@ class TheWorld extends WorldBase
       position = body.GetPosition()
       sprite.position.x = position.x * 100
       sprite.position.y = position.y * 100
-      sprite.rotation = body.GetAngle()
+      sprite.rotation = body.GetAngle() + PIover2
 
   applyControls: ->
     for id,player of @data.players
@@ -150,14 +153,14 @@ class TheWorld extends WorldBase
 
         
   makeBoxBody: (boxData) ->
-    size = 0.5
+    size = 1
     linearDamping = 3
     angularDamping = 3
 
     polyFixture = new Box2D.Dynamics.b2FixtureDef()
     polyFixture.shape = new Box2D.Collision.Shapes.b2PolygonShape()
     polyFixture.density = 1
-    polyFixture.shape.SetAsBox(size,size)
+    polyFixture.shape.SetAsBox(0.71,0.4)
 
     bodyDef = new Box2D.Dynamics.b2BodyDef()
     bodyDef.type = Box2D.Dynamics.b2Body.b2_dynamicBody
@@ -174,12 +177,13 @@ class TheWorld extends WorldBase
     body
         
   makeBoxSprite: (boxData) ->
-    size = 0.5
-    box = new PIXI.Sprite(PIXI.Texture.fromFrame("pixibox_assets/box.jpg"))
+    size = 1
+    # box = new PIXI.Sprite(PIXI.Texture.fromFrame("pixibox_assets/box.jpg"))
+    box = new PIXI.Sprite(PIXI.Texture.fromFrame("pixibox_assets/bumpercat_red.png"))
     box.i = 0
     box.anchor.x = box.anchor.y = 0.5
-    box.scale.x = size * 2
-    box.scale.y = size * 2
+    box.scale.x = size
+    box.scale.y = size
     box
 
   updateControl: (id, action,value) ->
