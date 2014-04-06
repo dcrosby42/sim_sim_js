@@ -1,4 +1,11 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+Number.prototype.fixed = function(n) {
+  n = n || 3;
+  return parseFloat(this.toFixed(n));
+};
+
+
+},{}],2:[function(require,module,exports){
 var InputState, KeyboardController, KeyboardWrapper;
 
 KeyboardWrapper = (function() {
@@ -119,10 +126,14 @@ KeyboardController = (function() {
 module.exports = KeyboardController;
 
 
-},{}],2:[function(require,module,exports){
-var KeyboardController, METER, MathUtil, STAGE_HEIGHT, STAGE_WIDTH, actors, bodies, getBodyAtMouse, isBegin, keyboardController, loadAssets, loadAssets2, makeBoxBody, makeBoxSprite, mouseJoint, onLoad, onMove, renderer, stage, stats, touchX, touchY, update, vec2, world;
+},{}],3:[function(require,module,exports){
+var KeyboardController, METER, STAGE_HEIGHT, STAGE_WIDTH, SimSim, WorldBase, actors, bodies, imageAssets, keyboardController, makeBoxBody, makeBoxSprite, renderer, setupKeyboardController, setupPhysics, setupPixi, setupSimulation, setupStats, simulation, stage, stats, update, vec2, world;
 
 KeyboardController = require('./keyboard_controller.coffee');
+
+SimSim = require('./simult_sim/index.coffee');
+
+WorldBase = require('./simult_sim/world_base.coffee');
 
 vec2 = function(x, y) {
   return new Box2D.Common.Math.b2Vec2(x, y);
@@ -144,101 +155,87 @@ renderer = null;
 
 world = null;
 
-mouseJoint = null;
-
-touchX = null;
-
-touchY = null;
-
-isBegin = false;
-
 stats = null;
 
 keyboardController = null;
 
-MathUtil = function() {};
+simulation = null;
 
-MathUtil.RADIANS = Math.PI / 180;
+imageAssets = ["pixibox_assets/ball.png", "pixibox_assets/box.jpg"];
 
-MathUtil.DEGREES = 180 / Math.PI;
-
-MathUtil.rndRange = function(min, max) {
-  return min + (Math.random() * (max - min));
+window.onload = function() {
+  var loader;
+  setupStats();
+  setupPixi();
+  loader = new PIXI.AssetLoader(imageAssets);
+  loader.onComplete = function() {
+    setupPhysics();
+    setupKeyboardController();
+    return update();
+  };
+  return loader.load();
 };
 
-MathUtil.rndIntRange = function(min, max) {
-  return Math.round(MathUtil.rndRange(min, max));
+setupSimulation = function() {
+  var url;
+  url = "http://" + location.hostname + ":" + location.port;
+  return simulation = SimSim.create.socketIOSimulation({
+    socketIO: io.connect(url),
+    worldClass: TheWorld
+  });
 };
 
-MathUtil.toRadians = function(degrees) {
-  return degrees * MathUtil.RADIANS;
-};
-
-MathUtil.toDegrees = function(radians) {
-  return radians * MathUtil.DEGREES;
-};
-
-MathUtil.hitTest = function(x1, y1, w1, h1, x2, y2, w2, h2) {
-  if (x1 + w1 > x2) {
-    if (x1 < x2 + w2) {
-      if (y1 + h1 > y2) {
-        if (y1 < y2 + h2) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-};
-
-onLoad = function() {
-  var container, loader;
+setupStats = function() {
+  var container;
   container = document.createElement("div");
   document.body.appendChild(container);
   stats = new Stats();
   container.appendChild(stats.domElement);
-  stats.domElement.style.position = "absolute";
+  return stats.domElement.style.position = "absolute";
+};
+
+setupPixi = function() {
   stage = new PIXI.Stage(0xDDDDDD, true);
   renderer = PIXI.autoDetectRenderer(STAGE_WIDTH, STAGE_HEIGHT, void 0, false);
-  document.body.appendChild(renderer.view);
-  keyboardController = new KeyboardController({
+  return document.body.appendChild(renderer.view);
+};
+
+setupPhysics = function() {
+  var body, gravity, sprite;
+  console.log("phys");
+  gravity = vec2(0, 0);
+  world = new Box2D.Dynamics.b2World(gravity, true);
+  body = makeBoxBody({
+    x: 4,
+    y: 2,
+    size: 0.5
+  });
+  bodies.push(body);
+  sprite = makeBoxSprite({
+    size: 0.5
+  });
+  stage.addChild(sprite);
+  actors.push(sprite);
+  body = makeBoxBody({
+    x: 6,
+    y: 2,
+    size: 0.25
+  });
+  bodies.push(body);
+  sprite = makeBoxSprite({
+    size: 0.25
+  });
+  stage.addChild(sprite);
+  return actors.push(sprite);
+};
+
+setupKeyboardController = function() {
+  return keyboardController = new KeyboardController({
     w: "forward",
     a: "turnLeft",
     d: "turnRight",
     s: "back"
   });
-  loader = new PIXI.AssetLoader(["pixibox_assets/ball.png", "pixibox_assets/box.jpg"]);
-  loader.onComplete = loadAssets2;
-  return loader.load();
-};
-
-loadAssets2 = function() {
-  var body, body2, box, box2, gravity;
-  gravity = vec2(0, 0);
-  world = new Box2D.Dynamics.b2World(gravity, true);
-  body = makeBoxBody({
-    x: 8,
-    y: 2,
-    size: 0.5
-  });
-  bodies.push(body);
-  box = makeBoxSprite({
-    size: 0.5
-  });
-  stage.addChild(box);
-  actors.push(box);
-  body2 = makeBoxBody({
-    x: 2,
-    y: 2,
-    size: 0.5
-  });
-  bodies.push(body2);
-  box2 = makeBoxSprite({
-    size: 0.5
-  });
-  stage.addChild(box2);
-  actors.push(box2);
-  return update();
 };
 
 makeBoxBody = function(opts) {
@@ -267,135 +264,9 @@ makeBoxSprite = function(opts) {
   return box;
 };
 
-loadAssets = function() {
-  var ball, body, bodyDef, box, circleFixture, gravity, i, polyFixture, s, _i;
-  gravity = new Box2D.Common.Math.b2Vec2(0, 10);
-  world = new Box2D.Dynamics.b2World(gravity, true);
-  polyFixture = new Box2D.Dynamics.b2FixtureDef();
-  polyFixture.shape = new Box2D.Collision.Shapes.b2PolygonShape();
-  polyFixture.density = 1;
-  circleFixture = new Box2D.Dynamics.b2FixtureDef();
-  circleFixture.shape = new Box2D.Collision.Shapes.b2CircleShape();
-  circleFixture.density = 1;
-  circleFixture.restitution = 0.7;
-  bodyDef = new Box2D.Dynamics.b2BodyDef();
-  bodyDef.type = Box2D.Dynamics.b2Body.b2_staticBody;
-  polyFixture.shape.SetAsBox(10, 1);
-  bodyDef.position.Set(9, STAGE_HEIGHT / METER + 1);
-  world.CreateBody(bodyDef).CreateFixture(polyFixture);
-  polyFixture.shape.SetAsBox(1, 100);
-  bodyDef.position.Set(-1, 0);
-  bodyDef.position.Set(STAGE_WIDTH / METER + 1, 0);
-  bodyDef.type = Box2D.Dynamics.b2Body.b2_dynamicBody;
-  for (i = _i = 0; _i <= 29; i = ++_i) {
-    bodyDef.position.Set(MathUtil.rndRange(0, STAGE_WIDTH) / METER, -MathUtil.rndRange(50, 5000) / METER);
-    body = world.CreateBody(bodyDef);
-    s = null;
-    if (Math.random() > 0.5) {
-      s = MathUtil.rndRange(70, 100);
-      circleFixture.shape.SetRadius(s / 2 / METER);
-      body.CreateFixture(circleFixture);
-      bodies.push(body);
-      ball = new PIXI.Sprite(PIXI.Texture.fromFrame("pixibox_assets/ball.png"));
-      stage.addChild(ball);
-      ball.i = i;
-      ball.anchor.x = ball.anchor.y = 0.5;
-      ball.scale.x = ball.scale.y = s / 100;
-      actors[actors.length] = ball;
-    } else {
-      s = MathUtil.rndRange(50, 100);
-      polyFixture.shape.SetAsBox(s / 2 / METER, s / 2 / METER);
-      body.CreateFixture(polyFixture);
-      bodies.push(body);
-      box = new PIXI.Sprite(PIXI.Texture.fromFrame("pixibox_assets/box.jpg"));
-      stage.addChild(box);
-      box.i = i;
-      box.anchor.x = box.anchor.y = 0.5;
-      box.scale.x = s / 100;
-      box.scale.y = s / 100;
-      actors[actors.length] = box;
-    }
-  }
-  document.addEventListener("mousedown", (function(event) {
-    isBegin = true;
-    onMove(event);
-    return document.addEventListener("mousemove", onMove, true);
-  }), true);
-  document.addEventListener("mouseup", (function(event) {
-    document.removeEventListener("mousemove", onMove, true);
-    isBegin = false;
-    touchX = void 0;
-    return touchY = void 0;
-  }), true);
-  renderer.view.addEventListener("touchstart", (function(event) {
-    isBegin = true;
-    onMove(event);
-    return renderer.view.addEventListener("touchmove", onMove, true);
-  }), true);
-  renderer.view.addEventListener("touchend", (function(event) {
-    renderer.view.removeEventListener("touchmove", onMove, true);
-    isBegin = false;
-    touchX = void 0;
-    return touchY = void 0;
-  }), true);
-  return update();
-};
-
-getBodyAtMouse = function() {
-  var aabb, body, mousePos;
-  mousePos = new Box2D.Common.Math.b2Vec2(touchX, touchY);
-  aabb = new Box2D.Collision.b2AABB();
-  aabb.lowerBound.Set(touchX - 0.001, touchY - 0.001);
-  aabb.upperBound.Set(touchX + 0.001, touchY + 0.001);
-  body = null;
-  world.QueryAABB((function(fixture) {
-    if (fixture.GetBody().GetType() !== Box2D.Dynamics.b2BodyDef.b2_staticBody) {
-      if (fixture.GetShape().TestPoint(fixture.GetBody().GetTransform(), mousePos)) {
-        body = fixture.GetBody();
-        return false;
-      }
-    }
-    return true;
-  }), aabb);
-  return body;
-};
-
-onMove = function(event) {
-  var touche;
-  if (event["changedTouches"]) {
-    touche = event["changedTouches"][0];
-    touchX = touche.pageX / METER;
-    return touchY = touche.pageY / METER;
-  } else {
-    touchX = event.clientX / METER;
-    return touchY = event.clientY / METER;
-  }
-};
-
 update = function() {
-  var a, actor, body, box, dragBody, f, i, jointDef, position, r, v, _i, _ref;
+  var a, actor, body, box, f, i, position, r, v, _i, _ref;
   requestAnimationFrame(update);
-  if (isBegin && !mouseJoint) {
-    dragBody = getBodyAtMouse();
-    if (dragBody) {
-      jointDef = new Box2D.Dynamics.Joints.b2MouseJointDef();
-      jointDef.bodyA = world.GetGroundBody();
-      jointDef.bodyB = dragBody;
-      jointDef.target.Set(touchX, touchY);
-      jointDef.collideConnected = true;
-      jointDef.maxForce = 300.0 * dragBody.GetMass();
-      mouseJoint = world.CreateJoint(jointDef);
-      dragBody.SetAwake(true);
-    }
-  }
-  if (mouseJoint) {
-    if (isBegin) {
-      mouseJoint.SetTarget(new Box2D.Common.Math.b2Vec2(touchX, touchY));
-    } else {
-      world.DestroyJoint(mouseJoint);
-      mouseJoint = null;
-    }
-  }
   box = bodies[0];
   keyboardController.update();
   if (keyboardController.isActive("forward")) {
@@ -426,7 +297,701 @@ update = function() {
   return stats.update();
 };
 
-window.onload = onLoad;
+
+},{"./keyboard_controller.coffee":2,"./simult_sim/index.coffee":8,"./simult_sim/world_base.coffee":17}],4:[function(require,module,exports){
+var Client, EventEmitter,
+  __hasProp = {}.hasOwnProperty,
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+  __slice = [].slice;
+
+EventEmitter = require('./event_emitter.coffee');
+
+Client = (function(_super) {
+  __extends(Client, _super);
+
+  function Client(adapter, gameEventFactory, clientMessageFactory, simulationEventFactory) {
+    this.adapter = adapter;
+    this.gameEventFactory = gameEventFactory;
+    this.clientMessageFactory = clientMessageFactory;
+    this.simulationEventFactory = simulationEventFactory;
+    this._debugOn = false;
+    this.gameStarted = false;
+    this.clientId = null;
+    this.simulationEventsBuffer = [];
+    this.gameEventsBuffer = [];
+    this.preGameEventsBuffer = [];
+    this.adapter.on('ClientAdapter::Disconnected', (function(_this) {
+      return function() {
+        _this._debug("rec'd ClientAdapter::Disconnected");
+        return _this.gameEventsBuffer.push(_this.gameEventFactory.disconnected());
+      };
+    })(this));
+    this.adapter.on('ClientAdapter::Packet', (function(_this) {
+      return function(data) {
+        var copyOfSimEvents, f, gameEvent, msg, protoTurn, simEvent, _i, _len, _ref;
+        msg = _this._unpackServerMessage(data);
+        if (msg.type !== 'ServerMessage::TurnComplete') {
+          _this._debug("rec'd ClientAdapter::Packet", msg);
+        }
+        switch (msg.type) {
+          case 'ServerMessage::IdAssigned':
+            return _this.clientId = msg.ourId;
+          case 'ServerMessage::Event':
+            return _this.simulationEventsBuffer.push(_this.simulationEventFactory.event(msg.sourcePlayerId, msg.data));
+          case 'ServerMessage::PlayerJoined':
+            return _this.simulationEventsBuffer.push(_this.simulationEventFactory.playerJoined(msg.playerId));
+          case 'ServerMessage::PlayerLeft':
+            return _this.simulationEventsBuffer.push(_this.simulationEventFactory.playerLeft(msg.playerId));
+          case 'ServerMessage::TurnComplete':
+            return _this._turnComplete(msg);
+          case 'ServerMessage::StartGame':
+            _this.gameStarted = true;
+            _ref = _this._unpackProtoTurn(msg.protoTurn);
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+              simEvent = _ref[_i];
+              _this.simulationEventsBuffer.push(simEvent);
+            }
+            return _this.preGameEventsBuffer.push(_this.gameEventFactory.startGame(msg.yourId, msg.turnPeriod, msg.currentTurn, msg.gamestate));
+          case 'ServerMessage::GamestateRequest':
+            copyOfSimEvents = _this.simulationEventsBuffer.slice(0);
+            protoTurn = _this._packProtoTurn(copyOfSimEvents);
+            f = function(gamestate) {
+              return _this._sendMessage(_this.clientMessageFactory.gamestate(msg.forPlayerId, protoTurn, gamestate));
+            };
+            gameEvent = _this.gameEventFactory.gamestateRequest(f);
+            if (_this.gameStarted) {
+              return _this.gameEventsBuffer.push(gameEvent);
+            } else {
+              return _this.preGameEventsBuffer.push(gameEvent);
+            }
+        }
+      };
+    })(this));
+  }
+
+  Client.prototype.update = function(callback) {
+    var event, i, _i, _j, _ref, _ref1, _results;
+    for (i = _i = 0, _ref = this.preGameEventsBuffer.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
+      callback(this.preGameEventsBuffer.shift());
+    }
+    if (this.gameStarted) {
+      _results = [];
+      for (i = _j = 0, _ref1 = this.gameEventsBuffer.length; 0 <= _ref1 ? _j < _ref1 : _j > _ref1; i = 0 <= _ref1 ? ++_j : --_j) {
+        event = this.gameEventsBuffer.shift();
+        _results.push(callback(event));
+      }
+      return _results;
+    }
+  };
+
+  Client.prototype.sendEvent = function(data) {
+    return this._sendMessage(this.clientMessageFactory.event(data));
+  };
+
+  Client.prototype.disconnect = function() {
+    return this.adapter.disconnect();
+  };
+
+  Client.prototype._turnComplete = function(msg) {
+    var f, i, turnEvents, _i, _ref;
+    turnEvents = [];
+    for (i = _i = 0, _ref = this.simulationEventsBuffer.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
+      turnEvents.push(this.simulationEventsBuffer.shift());
+    }
+    f = (function(_this) {
+      return function(checksum) {
+        return _this._sendMessage(_this.clientMessageFactory.turnFinished(msg.turnNumber, checksum));
+      };
+    })(this);
+    return this.gameEventsBuffer.push(this.gameEventFactory.turnComplete(msg.turnNumber, turnEvents, f));
+  };
+
+  Client.prototype._unpackServerMessage = function(data) {
+    return data;
+  };
+
+  Client.prototype._packClientMessage = function(msg) {
+    return msg;
+  };
+
+  Client.prototype._packProtoTurn = function(events) {
+    return events;
+  };
+
+  Client.prototype._unpackProtoTurn = function(protoTurn) {
+    return protoTurn;
+  };
+
+  Client.prototype._sendMessage = function(msg) {
+    if (msg.type !== 'ClientMsg::TurnFinished') {
+      this._debug("_sendMessage", msg);
+    }
+    return this.adapter.send(this._packClientMessage(msg));
+  };
+
+  Client.prototype._debug = function() {
+    var args;
+    args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+    if (this._debugOn) {
+      return console.log.apply(console, ["[Client]"].concat(__slice.call(args)));
+    }
+  };
+
+  return Client;
+
+})(EventEmitter);
+
+module.exports = Client;
 
 
-},{"./keyboard_controller.coffee":1}]},{},[2])
+},{"./event_emitter.coffee":6}],5:[function(require,module,exports){
+var ClientMessageFactory;
+
+ClientMessageFactory = (function() {
+  function ClientMessageFactory() {}
+
+  ClientMessageFactory.prototype.turnFinished = function(turnNumber, checksum) {
+    return {
+      type: 'ClientMsg::TurnFinished',
+      turnNumber: turnNumber,
+      checksum: checksum
+    };
+  };
+
+  ClientMessageFactory.prototype.gamestate = function(forPlayerId, protoTurn, gamestate) {
+    return {
+      type: 'ClientMsg::Gamestate',
+      forPlayerId: forPlayerId,
+      protoTurn: protoTurn,
+      data: gamestate
+    };
+  };
+
+  ClientMessageFactory.prototype.event = function(data) {
+    return {
+      type: 'ClientMsg::Event',
+      data: data
+    };
+  };
+
+  return ClientMessageFactory;
+
+})();
+
+module.exports = ClientMessageFactory;
+
+
+},{}],6:[function(require,module,exports){
+var EventEmitter,
+  __slice = [].slice;
+
+EventEmitter = (function() {
+  function EventEmitter() {}
+
+  EventEmitter.prototype.on = function(event, f) {
+    return this._getListeners(event).push(f);
+  };
+
+  EventEmitter.prototype.emit = function() {
+    var args, event, f, _i, _len, _ref;
+    event = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
+    _ref = this._getListeners(event);
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      f = _ref[_i];
+      f.apply(null, args);
+    }
+    return null;
+  };
+
+  EventEmitter.prototype._getListeners = function(event) {
+    var _base;
+    this._listeners || (this._listeners = {});
+    (_base = this._listeners)[event] || (_base[event] = []);
+    return this._listeners[event];
+  };
+
+  return EventEmitter;
+
+})();
+
+module.exports = EventEmitter;
+
+
+},{}],7:[function(require,module,exports){
+var GameEventFactory;
+
+GameEventFactory = (function() {
+  function GameEventFactory() {}
+
+  GameEventFactory.prototype.disconnected = function() {
+    return {
+      type: 'GameEvent::Disconnected'
+    };
+  };
+
+  GameEventFactory.prototype.gamestateRequest = function(f) {
+    return {
+      type: 'GameEvent::GamestateRequest',
+      gamestateClosure: f
+    };
+  };
+
+  GameEventFactory.prototype.startGame = function(ourId, turnPeriod, currentTurn, gamestate) {
+    return {
+      type: 'GameEvent::StartGame',
+      ourId: ourId,
+      turnPeriod: turnPeriod,
+      currentTurn: currentTurn,
+      gamestate: gamestate
+    };
+  };
+
+  GameEventFactory.prototype.turnComplete = function(turnNumber, events, checksumClosure) {
+    return {
+      type: 'GameEvent::TurnComplete',
+      turnNumber: turnNumber,
+      events: events,
+      checksumClosure: checksumClosure
+    };
+  };
+
+  return GameEventFactory;
+
+})();
+
+module.exports = GameEventFactory;
+
+
+},{}],8:[function(require,module,exports){
+var createSimulation, createSimulationUsingSocketIO, createSocketIOClientAdapter;
+
+require('../helpers.coffee');
+
+createSimulation = function(opts) {
+  var Client, ClientMessageFactory, GameEventFactory, Simulation, SimulationEventFactory, SimulationStateFactory, SimulationStateSerializer, TurnCalculator, UserEventSerializer, client, clientMessageFactory, gameEventFactory, simulation, simulationEventFactory, simulationStateFactory, simulationStateSerializer, turnCalculator, userEventSerializer;
+  if (opts == null) {
+    opts = {};
+  }
+  if (!opts.adapter) {
+    throw new error("Cannot build simulation without network adapter, such as SocketIOClientAdapter");
+  }
+  if (!opts.worldClass) {
+    throw new Error("Cannot build simulation without worldClass, which must implement interface WorldBase");
+  }
+  GameEventFactory = require('./game_event_factory.coffee');
+  ClientMessageFactory = require('./client_message_factory.coffee');
+  SimulationEventFactory = require('./simulation_event_factory.coffee');
+  Client = require('./client.coffee');
+  TurnCalculator = require('./turn_calculator.coffee');
+  SimulationStateFactory = require('./simulation_state_factory.coffee');
+  SimulationStateSerializer = require('./simulation_state_serializer.coffee');
+  UserEventSerializer = require('./user_event_serializer.coffee');
+  Simulation = require('./simulation.coffee');
+  gameEventFactory = new GameEventFactory();
+  clientMessageFactory = new ClientMessageFactory();
+  simulationEventFactory = new SimulationEventFactory();
+  client = new Client(opts.adapter, gameEventFactory, clientMessageFactory, simulationEventFactory);
+  turnCalculator = new TurnCalculator();
+  userEventSerializer = new UserEventSerializer();
+  simulationStateFactory = new SimulationStateFactory({
+    timePerTurn: opts.timesPerTurn || 0.1,
+    stepsPerTurn: opts.stepsPerTurn || 6,
+    step: opts.step || 0,
+    worldClass: opts.worldClass
+  });
+  simulationStateSerializer = new SimulationStateSerializer(simulationStateFactory);
+  simulation = new Simulation(client, turnCalculator, simulationStateFactory, simulationStateSerializer, userEventSerializer);
+  return simulation;
+};
+
+createSocketIOClientAdapter = function(socketIO) {
+  var SocketIOClientAdapter;
+  SocketIOClientAdapter = require('./socket_io_client_adapter.coffee');
+  return new SocketIOClientAdapter(socketIO);
+};
+
+createSimulationUsingSocketIO = function(opts) {
+  if (opts == null) {
+    opts = {};
+  }
+  opts.adapter = createSocketIOClientAdapter(opts.socketIO);
+  return createSimulation(opts);
+};
+
+exports.create = {
+  socketIOSimulation: createSimulationUsingSocketIO
+};
+
+
+},{"../helpers.coffee":1,"./client.coffee":4,"./client_message_factory.coffee":5,"./game_event_factory.coffee":7,"./simulation.coffee":9,"./simulation_event_factory.coffee":10,"./simulation_state_factory.coffee":12,"./simulation_state_serializer.coffee":13,"./socket_io_client_adapter.coffee":14,"./turn_calculator.coffee":15,"./user_event_serializer.coffee":16}],9:[function(require,module,exports){
+var Simulation,
+  __slice = [].slice;
+
+require('../helpers.coffee');
+
+Simulation = (function() {
+  function Simulation(client, turnCalculator, simulationStateFactory, simulationStateSerializer, userEventSerializer) {
+    this.client = client;
+    this.turnCalculator = turnCalculator;
+    this.simulationStateFactory = simulationStateFactory;
+    this.simulationStateSerializer = simulationStateSerializer;
+    this.userEventSerializer = userEventSerializer;
+    this.lastTurnTime = 0;
+    this._debugOn = false;
+  }
+
+  Simulation.prototype.worldState = function() {
+    if (this.simState) {
+      return this.simState.world;
+    }
+  };
+
+  Simulation.prototype.clientId = function() {
+    return this.client.clientId;
+  };
+
+  Simulation.prototype.quit = function() {
+    this.client.disconnect();
+    return this.simState = null;
+  };
+
+  Simulation.prototype.worldProxy = function() {
+    var args, method;
+    method = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
+    return this.sendEvent({
+      type: 'UserEvent::WorldProxyEvent',
+      method: method,
+      args: args
+    });
+  };
+
+  Simulation.prototype.sendEvent = function(event) {
+    this._debug("sendEvent", event);
+    return this.client.sendEvent(this.userEventSerializer.pack(event));
+  };
+
+  Simulation.prototype.update = function(seconds) {
+    var elapsedTurnTime;
+    if (this.simState) {
+      elapsedTurnTime = (seconds - this.lastTurnTime).fixed();
+      this.turnCalculator.stepUntilTurnTime(this.simState, elapsedTurnTime);
+    }
+    return this.client.update((function(_this) {
+      return function(gameEvent) {
+        var checksum, packedSimState, simEvent, userEvent, _i, _len, _ref, _ref1;
+        switch (gameEvent.type) {
+          case 'GameEvent::TurnComplete':
+            _this._debug("GameEvent::TurnComplete.... simState is", _this.simState);
+            _this.turnCalculator.advanceTurn(_this.simState);
+            _this.lastTurnTime = seconds;
+            _ref = gameEvent.events;
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+              simEvent = _ref[_i];
+              switch (simEvent.type) {
+                case 'SimulationEvent::Event':
+                  userEvent = _this.userEventSerializer.unpack(simEvent.data);
+                  if (userEvent.type === 'UserEvent::WorldProxyEvent') {
+                    if (_this.simState.world[userEvent.method]) {
+                      (_ref1 = _this.simState.world)[userEvent.method].apply(_ref1, [simEvent.playerId].concat(__slice.call(userEvent.args)));
+                    } else {
+                      throw new Error("WorldProxyEvent with method " + userEvent.method + " CANNOT BE APPLIED because the world object doesn't have that method!");
+                    }
+                  } else {
+                    _this.simState.world.incomingEvent(simEvent.playerId, userEvent);
+                  }
+                  break;
+                case 'SimulationEvent::PlayerJoined':
+                  _this.simState.world.playerJoined(simEvent.playerId);
+                  break;
+                case 'SimulationEvent::PlayerLeft':
+                  _this.simState.world.playerLeft(simEvent.playerId);
+              }
+            }
+            checksum = _this.simulationStateSerializer.calcWorldChecksum(_this.simState.world);
+            return gameEvent.checksumClosure(checksum);
+          case 'GameEvent::StartGame':
+            _this.ourId = gameEvent.ourId;
+            _this.simState = _this.simulationStateSerializer.unpackSimulationState(gameEvent.gamestate);
+            return _this._debug("GameEvent::StartGame.... gameEvent is", gameEvent, "simState is", _this.simState);
+          case 'GameEvent::GamestateRequest':
+            _this.simState || (_this.simState = _this.simulationStateFactory.createSimulationState());
+            packedSimState = _this.simulationStateSerializer.packSimulationState(_this.simState);
+            return gameEvent.gamestateClosure(packedSimState);
+          case 'GameEvent::Disconnected':
+            return _this.simState = null;
+        }
+      };
+    })(this));
+  };
+
+  Simulation.prototype._debug = function() {
+    var args;
+    args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+    if (this._debugOn) {
+      return console.log("[Simulation]", args);
+    }
+  };
+
+  return Simulation;
+
+})();
+
+module.exports = Simulation;
+
+
+},{"../helpers.coffee":1}],10:[function(require,module,exports){
+var SimulationEventFactory;
+
+SimulationEventFactory = (function() {
+  function SimulationEventFactory() {}
+
+  SimulationEventFactory.prototype.event = function(playerId, data) {
+    return {
+      type: 'SimulationEvent::Event',
+      playerId: playerId,
+      data: data
+    };
+  };
+
+  SimulationEventFactory.prototype.playerJoined = function(playerId) {
+    return {
+      type: 'SimulationEvent::PlayerJoined',
+      playerId: playerId
+    };
+  };
+
+  SimulationEventFactory.prototype.playerLeft = function(playerId) {
+    return {
+      type: 'SimulationEvent::PlayerLeft',
+      playerId: playerId
+    };
+  };
+
+  return SimulationEventFactory;
+
+})();
+
+module.exports = SimulationEventFactory;
+
+
+},{}],11:[function(require,module,exports){
+var SimulationState;
+
+require('../helpers.coffee');
+
+SimulationState = (function() {
+  function SimulationState(timePerTurn, stepsPerTurn, step, world) {
+    this.timePerTurn = timePerTurn;
+    this.stepsPerTurn = stepsPerTurn;
+    this.step = step;
+    this.world = world;
+    this.timePerStep = (this.timePerTurn / this.stepsPerTurn).fixed();
+  }
+
+  return SimulationState;
+
+})();
+
+module.exports = SimulationState;
+
+
+},{"../helpers.coffee":1}],12:[function(require,module,exports){
+var SimulationState, SimulationStateFactory;
+
+SimulationState = require('./simulation_state.coffee');
+
+SimulationStateFactory = (function() {
+  function SimulationStateFactory(defaults) {
+    this.defaults = defaults;
+  }
+
+  SimulationStateFactory.prototype.createSimulationState = function() {
+    return new SimulationState(this.defaults.timePerTurn, this.defaults.stepsPerTurn, 0, this.createWorld(this.defaults.worldData || null));
+  };
+
+  SimulationStateFactory.prototype.createWorld = function(atts) {
+    if (this.defaults.worldClass) {
+      return new this.defaults.worldClass(atts);
+    } else {
+      throw new Error("SimulationStateFactory needs a worldClass");
+    }
+  };
+
+  return SimulationStateFactory;
+
+})();
+
+module.exports = SimulationStateFactory;
+
+
+},{"./simulation_state.coffee":11}],13:[function(require,module,exports){
+var SimulationState, SimulationStateSerializer;
+
+SimulationState = require('./simulation_state.coffee');
+
+SimulationStateSerializer = (function() {
+  function SimulationStateSerializer(simulationStateFactory) {
+    this.simulationStateFactory = simulationStateFactory;
+  }
+
+  SimulationStateSerializer.prototype.packSimulationState = function(simState) {
+    return {
+      timePerTurn: simState.timePerTurn,
+      stepsPerTurn: simState.stepsPerTurn,
+      step: simState.step,
+      world: simState.world.toAttributes()
+    };
+  };
+
+  SimulationStateSerializer.prototype.unpackSimulationState = function(data) {
+    return new SimulationState(data.timePerTurn, data.stepsPerTurn, data.step, this.simulationStateFactory.createWorld(data.world));
+  };
+
+  SimulationStateSerializer.prototype.calcWorldChecksum = function(world) {
+    return "temporary world checksum";
+  };
+
+  return SimulationStateSerializer;
+
+})();
+
+module.exports = SimulationStateSerializer;
+
+
+},{"./simulation_state.coffee":11}],14:[function(require,module,exports){
+var EventEmitter, SocketIOClientAdapter,
+  __hasProp = {}.hasOwnProperty,
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+
+EventEmitter = require('./event_emitter.coffee');
+
+SocketIOClientAdapter = (function(_super) {
+  __extends(SocketIOClientAdapter, _super);
+
+  function SocketIOClientAdapter(socket) {
+    this.socket = socket;
+    if (!this.socket) {
+      throw new Error("A socket.io socket instance is required to build SockedIOClientAdapter");
+    }
+    this.socket.on('data', (function(_this) {
+      return function(data) {
+        return _this.emit('ClientAdapter::Packet', data);
+      };
+    })(this));
+    this.socket.on('disconnect', (function(_this) {
+      return function() {
+        return _this.emit('ClientAdapter::Disconnected');
+      };
+    })(this));
+  }
+
+  SocketIOClientAdapter.prototype.send = function(data) {
+    return this.socket.emit('data', data);
+  };
+
+  SocketIOClientAdapter.prototype.disconnect = function() {
+    return this.socket.disconnect();
+  };
+
+  return SocketIOClientAdapter;
+
+})(EventEmitter);
+
+module.exports = SocketIOClientAdapter;
+
+
+},{"./event_emitter.coffee":6}],15:[function(require,module,exports){
+var TurnCalculator;
+
+require('../helpers.coffee');
+
+TurnCalculator = (function() {
+  function TurnCalculator() {}
+
+  TurnCalculator.prototype.advanceTurn = function(simState) {
+    this.stepUntil(simState, simState.stepsPerTurn);
+    return simState.step = 0;
+  };
+
+  TurnCalculator.prototype.stepUntilTurnTime = function(simState, turnTime) {
+    var shouldBeStep;
+    shouldBeStep = Math.round(turnTime / simState.timePerStep);
+    return this.stepUntil(simState, shouldBeStep);
+  };
+
+  TurnCalculator.prototype.stepUntil = function(simState, n) {
+    var limit, _results;
+    limit = simState.stepsPerTurn;
+    if (n < limit) {
+      limit = n;
+    }
+    _results = [];
+    while (simState.step < limit) {
+      simState.step += 1;
+      _results.push(simState.world.step(simState.timePerStep));
+    }
+    return _results;
+  };
+
+  return TurnCalculator;
+
+})();
+
+module.exports = TurnCalculator;
+
+
+},{"../helpers.coffee":1}],16:[function(require,module,exports){
+var UserEventSerializer;
+
+UserEventSerializer = (function() {
+  function UserEventSerializer() {}
+
+  UserEventSerializer.prototype.pack = function(msg) {
+    return msg;
+  };
+
+  UserEventSerializer.prototype.unpack = function(data) {
+    return data;
+  };
+
+  return UserEventSerializer;
+
+})();
+
+module.exports = UserEventSerializer;
+
+
+},{}],17:[function(require,module,exports){
+var WorldBase;
+
+WorldBase = (function() {
+  function WorldBase() {}
+
+  WorldBase.prototype.playerJoined = function(id) {
+    throw new Error("Please implement WorldBase#playerJoined");
+  };
+
+  WorldBase.prototype.playerLeft = function(id) {
+    throw new Error("Please implement WorldBase#playerLeft");
+  };
+
+  WorldBase.prototype.incomingEvent = function(id) {
+    throw new Error("Please implement WorldBase#incomingEvent");
+  };
+
+  WorldBase.prototype.step = function(dt) {
+    throw new Error("Please implement WorldBase#step");
+  };
+
+  WorldBase.prototype.toAttributes = function() {
+    throw new Error("Please implement WorldBase#toAttributes");
+  };
+
+  return WorldBase;
+
+})();
+
+module.exports = WorldBase;
+
+
+},{}]},{},[3])
