@@ -21,7 +21,7 @@ module.exports = (grunt) ->
       files: [
         'client/**/*.coffee'
       ]
-      tasks: ['shell:browserify_pixitest2']
+      tasks: ['shell:browserify_bumpercats']
     jasmine_node:
       options:
         forceExit: true
@@ -74,6 +74,11 @@ module.exports = (grunt) ->
         options:
           failOnError: true
           stdout: true
+      browserify_bumpercats:
+        command: "node_modules/.bin/browserify -t coffeeify client/bumpercats.coffee > public/js/bumpercats.js"
+        options:
+          failOnError: true
+          stdout: true
 
   grunt.loadNpmTasks 'grunt-contrib-coffee'
   grunt.loadNpmTasks 'grunt-contrib-watch'
@@ -88,7 +93,7 @@ module.exports = (grunt) ->
   grunt.registerTask 'test', 'shell:jasmine'
   grunt.registerTask 'wtest', 'shell:jasmine_watch'
 
-  grunt.registerTask 'bundle', ['shell:browserify_clicker', 'shell:browserify_tanks2', 'shell:browserify_pixitest', 'shell:browserify_pixitest2' ]
+  grunt.registerTask 'bundle', ['shell:browserify_clicker', 'shell:browserify_tanks2', 'shell:browserify_pixitest', 'shell:browserify_pixitest2', 'shell:browserify_bumpercats' ]
 
     # uglify:
     #   options:

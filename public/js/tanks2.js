@@ -377,10 +377,10 @@ Simulation = (function() {
     return this.client.sendEvent(this.userEventSerializer.pack(event));
   };
 
-  Simulation.prototype.update = function(seconds) {
+  Simulation.prototype.update = function(timeInSeconds) {
     var elapsedTurnTime;
     if (this.simState) {
-      elapsedTurnTime = (seconds - this.lastTurnTime).fixed();
+      elapsedTurnTime = (timeInSeconds - this.lastTurnTime).fixed();
       this.turnCalculator.stepUntilTurnTime(this.simState, elapsedTurnTime);
     }
     return this.client.update((function(_this) {
@@ -390,7 +390,7 @@ Simulation = (function() {
           case 'GameEvent::TurnComplete':
             _this._debug("GameEvent::TurnComplete.... simState is", _this.simState);
             _this.turnCalculator.advanceTurn(_this.simState);
-            _this.lastTurnTime = seconds;
+            _this.lastTurnTime = timeInSeconds;
             _ref = gameEvent.events;
             for (_i = 0, _len = _ref.length; _i < _len; _i++) {
               simEvent = _ref[_i];
@@ -421,6 +421,7 @@ Simulation = (function() {
             _this.simState = _this.simulationStateSerializer.unpackSimulationState(gameEvent.gamestate);
             return _this._debug("GameEvent::StartGame.... gameEvent is", gameEvent, "simState is", _this.simState);
           case 'GameEvent::GamestateRequest':
+            console.log("Processing gamestate request");
             _this.simState || (_this.simState = _this.simulationStateFactory.createSimulationState());
             packedSimState = _this.simulationStateSerializer.packSimulationState(_this.simState);
             return gameEvent.gamestateClosure(packedSimState);

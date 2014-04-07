@@ -1,111 +1,473 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-var $SIMSIM, ClickerWorld, startSimulation;
-
-$SIMSIM = require('./simult_sim/index.coffee');
-
-ClickerWorld = require('./clicker_world.coffee');
-
-startSimulation = function() {
-  var beginTime, period, simulation, url, webTimer;
-  url = "http://" + location.hostname + ":" + location.port;
-  simulation = $SIMSIM.create.socketIOSimulation({
-    socketIO: io.connect(url),
-    worldClass: ClickerWorld
-  });
-  period = 20;
-  beginTime = new Date().getTime();
-  webTimer = setInterval((function() {
-    var elapsedSeconds, id, now, player, sb, str, world, _ref;
-    now = new Date().getTime();
-    elapsedSeconds = (now - beginTime) / 1000.0;
-    simulation.update(elapsedSeconds);
-    if (world = simulation.worldState()) {
-      sb = window.document.getElementById('score-board');
-      if (sb) {
-        str = '';
-        _ref = world.players;
-        for (id in _ref) {
-          player = _ref[id];
-          str += "Player " + id + " score: " + player.score + "\n";
-        }
-        str += "Time: " + (new Date().getTime()) + "\n";
-        return sb.textContent = str;
-      }
-    }
-  }), period);
-  window.simulation = simulation;
-  return window.scoreButtonClicked = function() {
-    return simulation.worldProxy('addScore', 1);
-  };
-};
-
-window.startSimulation = startSimulation;
-
-
-},{"./clicker_world.coffee":2,"./simult_sim/index.coffee":8}],2:[function(require,module,exports){
-var ClickerWorld, WorldBase,
+var KeyboardController, PIover2, STAGE_HEIGHT, STAGE_WIDTH, SimSim, StopWatch, TheWorld, WorldBase, imageAssets, setupKeyboardController, setupPixi, setupSimulation, setupStats, setupStopWatch, update, vec2,
   __hasProp = {}.hasOwnProperty,
-  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
-  __slice = [].slice;
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+
+StopWatch = require('./stop_watch.coffee');
+
+KeyboardController = require('./keyboard_controller.coffee');
+
+SimSim = require('./simult_sim/index.coffee');
 
 WorldBase = require('./simult_sim/world_base.coffee');
 
-ClickerWorld = (function(_super) {
-  __extends(ClickerWorld, _super);
+vec2 = function(x, y) {
+  return new Box2D.Common.Math.b2Vec2(x, y);
+};
 
-  function ClickerWorld(atts) {
-    if (atts == null) {
-      atts = {};
+PIover2 = Math.PI / 2;
+
+STAGE_WIDTH = window.innerWidth;
+
+STAGE_HEIGHT = window.innerHeight;
+
+window.local = {
+  simulation: null,
+  stopWatch: null,
+  pixi: {
+    stage: null,
+    renderer: null,
+    sprites: []
+  },
+  keyboardController: null,
+  stats: null
+};
+
+imageAssets = ["pixibox_assets/ball.png", "pixibox_assets/box.jpg", "pixibox_assets/bumpercat_red.png"];
+
+TheWorld = (function(_super) {
+  __extends(TheWorld, _super);
+
+  function TheWorld(data) {
+    if (data == null) {
+      data = null;
     }
-    this._debugOn = true;
-    this.players = atts.players || {};
+    this.thrust = 0.2;
+    this.turnSpeed = 0.06;
+    this.data = data || {
+      nextId: 0,
+      players: {},
+      boxes: {}
+    };
+    this.gameObjects = {
+      boxes: {}
+    };
+    this.setupPhysics();
+    this.syncNeeded = true;
   }
 
-  ClickerWorld.prototype.playerJoined = function(id) {
-    this.players[id] = {
-      score: 0
+  TheWorld.prototype.playerJoined = function(id) {
+    var boxId;
+    boxId = "B" + (this.nextId());
+    this.data.boxes[boxId] = {
+      x: 4.0,
+      y: 2.0,
+      angle: 0,
+      vx: 0.0,
+      vy: 0.0
     };
-    return this._debug("Player " + id + " JOINED");
-  };
-
-  ClickerWorld.prototype.playerLeft = function(id) {
-    delete this.players[id];
-    return this._debug("Player " + id + " LEFT");
-  };
-
-  ClickerWorld.prototype.step = function(dt) {};
-
-  ClickerWorld.prototype.addScore = function(id, score) {
-    this.players[id].score += score;
-    return this._debug("UPDATED player " + id + " score to " + this.players[id].score);
-  };
-
-  ClickerWorld.prototype.toAttributes = function() {
-    return {
-      players: this.players
+    this.data.players[id] = {
+      boxId: boxId,
+      controls: {
+        forward: false,
+        left: false,
+        right: false
+      }
     };
+    this.syncNeeded = true;
+    return console.log("Player " + id + " JOINED, @data is now", this.data);
   };
 
-  ClickerWorld.prototype._debug = function() {
-    var args;
-    args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-    if (this._debugOn) {
-      return console.log.apply(console, ["[MyWorld]"].concat(__slice.call(args)));
+  TheWorld.prototype.playerLeft = function(id) {
+    var boxId;
+    if (boxId = this.data.players[id].boxId) {
+      delete this.data.boxes[boxId];
     }
+    delete this.data.players[id];
+    this.syncNeeded = true;
+    return console.log("Player " + id + " LEFT, @data is now", this.data);
   };
 
-  return ClickerWorld;
+  TheWorld.prototype.step = function(dt) {
+    this.syncDataToGameObjects();
+    this.applyControls();
+    this.b2world.Step(dt, 3, 3);
+    this.b2world.ClearForces();
+    return this.moveSprites();
+  };
+
+  TheWorld.prototype.moveSprites = function() {
+    var body, boxId, obj, position, sprite, _ref, _results;
+    _ref = this.gameObjects.boxes;
+    _results = [];
+    for (boxId in _ref) {
+      obj = _ref[boxId];
+      body = obj.body;
+      sprite = obj.sprite;
+      position = body.GetPosition();
+      sprite.position.x = position.x * 100;
+      sprite.position.y = position.y * 100;
+      _results.push(sprite.rotation = body.GetAngle() + PIover2);
+    }
+    return _results;
+  };
+
+  TheWorld.prototype.applyControls = function() {
+    var a, body, con, f, id, player, r, v, _ref, _results;
+    _ref = this.data.players;
+    _results = [];
+    for (id in _ref) {
+      player = _ref[id];
+      con = player.controls;
+      body = this.gameObjects.boxes[player.boxId].body;
+      if (con.forward) {
+        r = body.GetAngle();
+        f = this.thrust * body.GetMass();
+        v = vec2(f * Math.cos(r), f * Math.sin(r));
+        body.ApplyImpulse(v, body.GetWorldCenter());
+      }
+      if (con.left) {
+        a = body.GetAngle();
+        body.SetAngle(a - this.turnSpeed);
+      }
+      if (con.right) {
+        a = body.GetAngle();
+        _results.push(body.SetAngle(a + this.turnSpeed));
+      } else {
+        _results.push(void 0);
+      }
+    }
+    return _results;
+  };
+
+  TheWorld.prototype.toAttributes = function() {
+    this.captureGameObjectsAsData();
+    return this.data;
+  };
+
+  TheWorld.prototype.nextId = function() {
+    var nid;
+    nid = this.data.nextId;
+    this.data.nextId += 1;
+    return nid;
+  };
+
+  TheWorld.prototype.setupPhysics = function() {
+    var gravity;
+    gravity = vec2(0, 0);
+    return this.b2world = new Box2D.Dynamics.b2World(vec2(0, 0), true);
+  };
+
+  TheWorld.prototype.syncDataToGameObjects = function() {
+    var boxData, boxId, e, obj, _ref, _ref1, _results;
+    if (!this.syncNeeded) {
+      return;
+    }
+    this.syncNeeded = false;
+    console.log("Syncing data to game objects");
+    _ref = this.data.boxes;
+    for (boxId in _ref) {
+      boxData = _ref[boxId];
+      if (!this.gameObjects.boxes[boxId]) {
+        try {
+          obj = {};
+          obj.body = this.makeBoxBody(boxData);
+          obj.sprite = this.makeBoxSprite(boxData);
+          window.local.pixi.stage.addChild(obj.sprite);
+          this.gameObjects.boxes[boxId] = obj;
+        } catch (_error) {
+          e = _error;
+          console.log("OOPS adding box " + boxId, e);
+        }
+      }
+    }
+    _ref1 = this.gameObjects.boxes;
+    _results = [];
+    for (boxId in _ref1) {
+      obj = _ref1[boxId];
+      if (!this.data.boxes[boxId]) {
+        try {
+          this.b2world.DestroyBody(obj.body);
+          window.local.pixi.stage.removeChild(obj.sprite);
+          _results.push(delete this.gameObjects.boxes[boxId]);
+        } catch (_error) {
+          e = _error;
+          _results.push(console.log("OOPS removing box " + boxId, e));
+        }
+      } else {
+        _results.push(void 0);
+      }
+    }
+    return _results;
+  };
+
+  TheWorld.prototype.captureGameObjectsAsData = function() {
+    var boxData, boxId, obj, pos, vel, _ref, _results;
+    _ref = this.data.boxes;
+    _results = [];
+    for (boxId in _ref) {
+      boxData = _ref[boxId];
+      obj = this.gameObjects.boxes[boxId];
+      pos = obj.body.GetPosition();
+      vel = obj.body.GetLinearVelocity();
+      boxData.x = pos.x;
+      boxData.y = pos.y;
+      boxData.angle = obj.body.GetAngle();
+      boxData.vx = vel.x;
+      _results.push(boxData.vy = vel.y);
+    }
+    return _results;
+  };
+
+  TheWorld.prototype.makeBoxBody = function(boxData) {
+    var angularDamping, body, bodyDef, linearDamping, polyFixture, size;
+    size = 1;
+    linearDamping = 3;
+    angularDamping = 3;
+    polyFixture = new Box2D.Dynamics.b2FixtureDef();
+    polyFixture.shape = new Box2D.Collision.Shapes.b2PolygonShape();
+    polyFixture.density = 1;
+    polyFixture.shape.SetAsBox(0.71, 0.4);
+    bodyDef = new Box2D.Dynamics.b2BodyDef();
+    bodyDef.type = Box2D.Dynamics.b2Body.b2_dynamicBody;
+    bodyDef.position.Set(boxData.x, boxData.y);
+    bodyDef.angle = boxData.angle;
+    bodyDef.linearVelocity = vec2(boxData.vx, boxData.vy);
+    bodyDef.awake = true;
+    body = this.b2world.CreateBody(bodyDef);
+    body.CreateFixture(polyFixture);
+    body.SetLinearDamping(linearDamping);
+    body.SetAngularDamping(angularDamping);
+    return body;
+  };
+
+  TheWorld.prototype.makeBoxSprite = function(boxData) {
+    var box, size;
+    size = 1;
+    box = new PIXI.Sprite(PIXI.Texture.fromFrame("pixibox_assets/bumpercat_red.png"));
+    box.i = 0;
+    box.anchor.x = box.anchor.y = 0.5;
+    box.scale.x = size;
+    box.scale.y = size;
+    return box;
+  };
+
+  TheWorld.prototype.updateControl = function(id, action, value) {
+    return this.data.players[id].controls[action] = value;
+  };
+
+  return TheWorld;
 
 })(WorldBase);
 
-module.exports = ClickerWorld;
+window.onload = function() {
+  var loader;
+  setupStats();
+  setupPixi();
+  loader = new PIXI.AssetLoader(imageAssets);
+  loader.onComplete = function() {
+    setupSimulation();
+    setupKeyboardController();
+    setupStopWatch();
+    return update();
+  };
+  return loader.load();
+};
+
+setupStopWatch = function() {
+  var stopWatch;
+  stopWatch = new StopWatch();
+  stopWatch.lap();
+  return window.local.stopWatch = stopWatch;
+};
+
+setupSimulation = function() {
+  var simulation, url;
+  url = "http://" + location.hostname + ":" + location.port;
+  simulation = SimSim.create.socketIOSimulation({
+    socketIO: io.connect(url),
+    worldClass: TheWorld
+  });
+  return window.local.simulation = simulation;
+};
+
+setupStats = function() {
+  var container, stats;
+  container = document.createElement("div");
+  document.body.appendChild(container);
+  stats = new Stats();
+  container.appendChild(stats.domElement);
+  stats.domElement.style.position = "absolute";
+  return window.local.stats = stats;
+};
+
+setupPixi = function() {
+  var renderer, stage;
+  stage = new PIXI.Stage(0xDDDDDD, true);
+  renderer = PIXI.autoDetectRenderer(STAGE_WIDTH, STAGE_HEIGHT, void 0, false);
+  document.body.appendChild(renderer.view);
+  window.local.pixi.stage = stage;
+  return window.local.pixi.renderer = renderer;
+};
+
+setupKeyboardController = function() {
+  var keyboardController;
+  keyboardController = new KeyboardController({
+    w: "forward",
+    a: "left",
+    d: "right",
+    s: "back",
+    up: "forward",
+    left: "left",
+    right: "right",
+    back: "back"
+  });
+  return window.local.keyboardController = keyboardController;
+};
+
+update = function() {
+  var action, elapsedSeconds, sim, value, _ref;
+  requestAnimationFrame(update);
+  elapsedSeconds = window.local.stopWatch.lap();
+  console.log("elapsedSeconds", elapsedSeconds);
+  sim = window.local.simulation;
+  _ref = window.local.keyboardController.update();
+  for (action in _ref) {
+    value = _ref[action];
+    sim.worldProxy("updateControl", action, value);
+  }
+  sim.update(elapsedSeconds);
+  window.local.pixi.renderer.render(window.local.pixi.stage);
+  return window.local.stats.update();
+};
 
 
-},{"./simult_sim/world_base.coffee":17}],3:[function(require,module,exports){
+},{"./keyboard_controller.coffee":3,"./simult_sim/index.coffee":8,"./simult_sim/world_base.coffee":17,"./stop_watch.coffee":18}],2:[function(require,module,exports){
 Number.prototype.fixed = function(n) {
   n = n || 3;
   return parseFloat(this.toFixed(n));
 };
+
+
+},{}],3:[function(require,module,exports){
+var InputState, KeyboardController, KeyboardWrapper;
+
+KeyboardWrapper = (function() {
+  function KeyboardWrapper(keys) {
+    var key, _i, _len, _ref;
+    this.keys = keys;
+    this.downs = {};
+    _ref = this.keys;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      key = _ref[_i];
+      this.downs[key] = false;
+      this._bind(key);
+    }
+  }
+
+  KeyboardWrapper.prototype._bind = function(key) {
+    Mousetrap.bind(key, ((function(_this) {
+      return function() {
+        return _this._keyDown(key);
+      };
+    })(this)), 'keydown');
+    return Mousetrap.bind(key, ((function(_this) {
+      return function() {
+        return _this._keyUp(key);
+      };
+    })(this)), 'keyup');
+  };
+
+  KeyboardWrapper.prototype._keyDown = function(key) {
+    this.downs[key] = true;
+    return false;
+  };
+
+  KeyboardWrapper.prototype._keyUp = function(key) {
+    this.downs[key] = false;
+    return false;
+  };
+
+  KeyboardWrapper.prototype.isActive = function(key) {
+    return this.downs[key];
+  };
+
+  return KeyboardWrapper;
+
+})();
+
+InputState = (function() {
+  function InputState(key) {
+    this.key = key;
+    this.active = false;
+  }
+
+  InputState.prototype.update = function(keyboardWrapper) {
+    var newState, oldState;
+    oldState = this.active;
+    newState = keyboardWrapper.isActive(this.key);
+    this.active = newState;
+    if (!oldState && newState) {
+      return "justPressed";
+    }
+    if (oldState && !newState) {
+      return "justReleased";
+    } else {
+      return null;
+    }
+  };
+
+  return InputState;
+
+})();
+
+KeyboardController = (function() {
+  function KeyboardController(bindings) {
+    var action, key, _ref;
+    this.bindings = bindings;
+    this.keys = [];
+    this.inputStates = {};
+    this.actionStates = {};
+    _ref = this.bindings;
+    for (key in _ref) {
+      action = _ref[key];
+      this.keys.push(key);
+      this.inputStates[key] = new InputState(key);
+      this.actionStates[key] = false;
+    }
+    this.keyboardWrapper = new KeyboardWrapper(this.keys);
+  }
+
+  KeyboardController.prototype.update = function() {
+    var action, diff, inputState, key, res, _ref;
+    diff = {};
+    _ref = this.inputStates;
+    for (key in _ref) {
+      inputState = _ref[key];
+      action = this.bindings[key];
+      res = inputState.update(this.keyboardWrapper);
+      switch (res) {
+        case "justPressed":
+          diff[action] = true;
+          this.actionStates[action] = true;
+          break;
+        case "justReleased":
+          diff[action] = false;
+          this.actionStates[action] = false;
+      }
+    }
+    return diff;
+  };
+
+  KeyboardController.prototype.isActive = function(action) {
+    return this.actionStates[action];
+  };
+
+  return KeyboardController;
+
+})();
+
+module.exports = KeyboardController;
 
 
 },{}],4:[function(require,module,exports){
@@ -433,7 +795,7 @@ exports.create = {
 };
 
 
-},{"../helpers.coffee":3,"./client.coffee":4,"./client_message_factory.coffee":5,"./game_event_factory.coffee":7,"./simulation.coffee":9,"./simulation_event_factory.coffee":10,"./simulation_state_factory.coffee":12,"./simulation_state_serializer.coffee":13,"./socket_io_client_adapter.coffee":14,"./turn_calculator.coffee":15,"./user_event_serializer.coffee":16}],9:[function(require,module,exports){
+},{"../helpers.coffee":2,"./client.coffee":4,"./client_message_factory.coffee":5,"./game_event_factory.coffee":7,"./simulation.coffee":9,"./simulation_event_factory.coffee":10,"./simulation_state_factory.coffee":12,"./simulation_state_serializer.coffee":13,"./socket_io_client_adapter.coffee":14,"./turn_calculator.coffee":15,"./user_event_serializer.coffee":16}],9:[function(require,module,exports){
 var Simulation,
   __slice = [].slice;
 
@@ -550,7 +912,7 @@ Simulation = (function() {
 module.exports = Simulation;
 
 
-},{"../helpers.coffee":3}],10:[function(require,module,exports){
+},{"../helpers.coffee":2}],10:[function(require,module,exports){
 var SimulationEventFactory;
 
 SimulationEventFactory = (function() {
@@ -606,7 +968,7 @@ SimulationState = (function() {
 module.exports = SimulationState;
 
 
-},{"../helpers.coffee":3}],12:[function(require,module,exports){
+},{"../helpers.coffee":2}],12:[function(require,module,exports){
 var SimulationState, SimulationStateFactory;
 
 SimulationState = require('./simulation_state.coffee');
@@ -751,7 +1113,7 @@ TurnCalculator = (function() {
 module.exports = TurnCalculator;
 
 
-},{"../helpers.coffee":3}],16:[function(require,module,exports){
+},{"../helpers.coffee":2}],16:[function(require,module,exports){
 var UserEventSerializer;
 
 UserEventSerializer = (function() {
@@ -803,6 +1165,37 @@ WorldBase = (function() {
 })();
 
 module.exports = WorldBase;
+
+
+},{}],18:[function(require,module,exports){
+var StopWatch;
+
+StopWatch = (function() {
+  function StopWatch() {
+    this.millis = this.currentTimeMillis;
+  }
+
+  StopWatch.prototype.lap = function() {
+    var newMillis;
+    newMillis = this.currentTimeMillis;
+    this.lapMillis = newMillis - this.millis;
+    this.millis = newMillis;
+    return this.lapSeconds();
+  };
+
+  StopWatch.prototype.currentTimeMillis = function() {
+    return new Date().getTime();
+  };
+
+  StopWatch.prototype.lapSeconds = function() {
+    return this.lapMillis / 1000.0;
+  };
+
+  return StopWatch;
+
+})();
+
+module.exports = StopWatch;
 
 
 },{}]},{},[1])
