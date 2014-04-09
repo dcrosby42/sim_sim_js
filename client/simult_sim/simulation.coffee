@@ -42,7 +42,7 @@ class Simulation
     @client.update (gameEvent) =>
       switch gameEvent.type
         when 'GameEvent::TurnComplete'
-          @_debug "GameEvent::TurnComplete.... simState is",@simState
+          @_debug "GameEvent::TurnComplete", new Date().getTime()
           @turnCalculator.advanceTurn @simState
           @lastTurnTime = timeInSeconds
           for simEvent in gameEvent.events
@@ -73,7 +73,6 @@ class Simulation
           @_debug "GameEvent::StartGame.... gameEvent is", gameEvent ,"simState is",@simState
 
         when 'GameEvent::GamestateRequest'
-          console.log "Processing gamestate request"
           @simState ||= @simulationStateFactory.createSimulationState()
           packedSimState = @simulationStateSerializer.packSimulationState(@simState)
           gameEvent.gamestateClosure(packedSimState)

@@ -164,7 +164,6 @@ TheWorld = (function(_super) {
       return;
     }
     this.syncNeeded = false;
-    console.log("Syncing data to game objects");
     _ref = this.data.boxes;
     for (boxId in _ref) {
       boxData = _ref[boxId];
@@ -326,17 +325,15 @@ setupKeyboardController = function() {
 };
 
 update = function() {
-  var action, elapsedSeconds, sim, value, _ref;
+  var action, sim, value, _ref;
   requestAnimationFrame(update);
-  elapsedSeconds = window.local.stopWatch.lap();
-  console.log("elapsedSeconds", elapsedSeconds);
   sim = window.local.simulation;
   _ref = window.local.keyboardController.update();
   for (action in _ref) {
     value = _ref[action];
     sim.worldProxy("updateControl", action, value);
   }
-  sim.update(elapsedSeconds);
+  sim.update(window.local.stopWatch.elapsedSeconds());
   window.local.pixi.renderer.render(window.local.pixi.stage);
   return window.local.stats.update();
 };
@@ -853,7 +850,7 @@ Simulation = (function() {
         var checksum, packedSimState, simEvent, userEvent, _i, _len, _ref, _ref1;
         switch (gameEvent.type) {
           case 'GameEvent::TurnComplete':
-            _this._debug("GameEvent::TurnComplete.... simState is", _this.simState);
+            _this._debug("GameEvent::TurnComplete", new Date().getTime());
             _this.turnCalculator.advanceTurn(_this.simState);
             _this.lastTurnTime = timeInSeconds;
             _ref = gameEvent.events;
@@ -886,7 +883,6 @@ Simulation = (function() {
             _this.simState = _this.simulationStateSerializer.unpackSimulationState(gameEvent.gamestate);
             return _this._debug("GameEvent::StartGame.... gameEvent is", gameEvent, "simState is", _this.simState);
           case 'GameEvent::GamestateRequest':
-            console.log("Processing gamestate request");
             _this.simState || (_this.simState = _this.simulationStateFactory.createSimulationState());
             packedSimState = _this.simulationStateSerializer.packSimulationState(_this.simState);
             return gameEvent.gamestateClosure(packedSimState);
@@ -1172,12 +1168,13 @@ var StopWatch;
 
 StopWatch = (function() {
   function StopWatch() {
-    this.millis = this.currentTimeMillis;
+    this.start = this.currentTimeMillis();
+    this.millis = this.start;
   }
 
   StopWatch.prototype.lap = function() {
     var newMillis;
-    newMillis = this.currentTimeMillis;
+    newMillis = this.currentTimeMillis();
     this.lapMillis = newMillis - this.millis;
     this.millis = newMillis;
     return this.lapSeconds();
@@ -1189,6 +1186,10 @@ StopWatch = (function() {
 
   StopWatch.prototype.lapSeconds = function() {
     return this.lapMillis / 1000.0;
+  };
+
+  StopWatch.prototype.elapsedSeconds = function() {
+    return (this.currentTimeMillis() - this.start) / 1000.0;
   };
 
   return StopWatch;

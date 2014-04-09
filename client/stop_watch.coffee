@@ -1,10 +1,11 @@
 
 class StopWatch
   constructor: ->
-    @millis = @currentTimeMillis
+    @start = @currentTimeMillis()
+    @millis = @start
 
   lap: ->
-    newMillis = @currentTimeMillis
+    newMillis = @currentTimeMillis()
     @lapMillis = newMillis - @millis
     @millis = newMillis
     @lapSeconds()
@@ -14,5 +15,9 @@ class StopWatch
 
   lapSeconds: ->
     @lapMillis / 1000.0
+
+  elapsedSeconds: ->
+    (@currentTimeMillis() - @start)/1000.0
+
 
 module.exports = StopWatch

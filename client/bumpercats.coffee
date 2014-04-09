@@ -114,7 +114,6 @@ class TheWorld extends WorldBase
   syncDataToGameObjects: ->
     return unless @syncNeeded
     @syncNeeded=false
-    console.log "Syncing data to game objects"
     # Boxes:
     for boxId,boxData of @data.boxes
       if !@gameObjects.boxes[boxId]
@@ -249,15 +248,11 @@ setupKeyboardController = ->
 update = ->
   requestAnimationFrame(update)
 
-  elapsedSeconds = window.local.stopWatch.lap()
-  console.log "elapsedSeconds", elapsedSeconds
-  
   sim = window.local.simulation
-
   for action,value of  window.local.keyboardController.update()
     sim.worldProxy "updateControl", action, value
   
-  sim.update(elapsedSeconds)
+  sim.update(window.local.stopWatch.elapsedSeconds())
 
   
   window.local.pixi.renderer.render(window.local.pixi.stage)
