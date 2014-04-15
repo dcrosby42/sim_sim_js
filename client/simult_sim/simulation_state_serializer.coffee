@@ -1,7 +1,7 @@
 SimulationState = require './simulation_state.coffee'
 
 class SimulationStateSerializer
-  constructor: (@simulationStateFactory) ->
+  constructor: (@simulationStateFactory,@checksumCalculator) ->
 
   packSimulationState: (simState) ->
     {
@@ -19,7 +19,13 @@ class SimulationStateSerializer
       data.step
       @simulationStateFactory.createWorld(data.world))
 
-  calcWorldChecksum: (world) -> "temporary world checksum"
+  calcWorldChecksum: (world,checksum) ->
+    @checksumCalculator.calculate(
+      JSON.stringify(world.toAttributes())
+      checksum
+    )
+
+
 
 
 module.exports = SimulationStateSerializer

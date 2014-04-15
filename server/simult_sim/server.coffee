@@ -43,6 +43,8 @@ class Server
 
         when 'ClientMsg::TurnFinished'
           _ = null
+          # console.log "TurnFinished|#{JSON.stringify(id:id,turnNumber:msg.turnNumber,crc:msg.checksum)}"
+
           # TODO: do something toward checksu verification here
 
   _send: (id, msg) ->

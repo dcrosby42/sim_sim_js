@@ -208,15 +208,17 @@ describe 'Simulation', ->
       expect(subject.lastTurnTime).toEqual 0.4
 
     it "creates a checksum over the state of the world", ->
+      previousChecksum = 'the old world checksum'
       worldChecksum = 'the world checksum'
+      subject.simState.checksum = previousChecksum
       spyOn(simulationStateSerializer, 'calcWorldChecksum').andReturn(worldChecksum)
       turnCompleteEvents.push simulationEventFactory.event(11, {type:'whatever',val:'whocares'})
 
       subject.update(t)
 
-
-      expect(simulationStateSerializer.calcWorldChecksum).toHaveBeenCalledWith(@world)
+      expect(simulationStateSerializer.calcWorldChecksum).toHaveBeenCalledWith(@world,previousChecksum)
       expect(sentChecksum).toEqual worldChecksum
+      expect(subject.simState.checksum).toEqual worldChecksum
 
 
     describe 'on SimulationEvent::Event', ->

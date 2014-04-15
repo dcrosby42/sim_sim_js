@@ -5,8 +5,10 @@ describe 'SimulationStateSerialzier', ->
   
   beforeEach ->
     @simulationStateFactory = { createWorld: (->) }
+    @checksumCalculator = { calculate: (->) }
 
-    @subject = new SimulationStateSerializer(@simulationStateFactory)
+
+    @subject = new SimulationStateSerializer(@simulationStateFactory, @checksumCalculator)
 
     @timePerTurn = 0.5
     @stepsPerTurn = 2
@@ -44,9 +46,12 @@ describe 'SimulationStateSerialzier', ->
     
   describe 'calcWorldChecksum', ->
     it 'is merely a placeholder for now', ->
-      world = {what:'ever'}
-      checksum = @subject.calcWorldChecksum(world)
-      expect(checksum).toEqual 'temporary world checksum'
+      initialSum = 123
+      newChecksum = 456
+      world = { toAttributes: (-> {what:'ever'})}
+      spyOn(@checksumCalculator, 'calculate').andReturn(newChecksum)
 
-  
+      checksum = @subject.calcWorldChecksum(world,initialSum)
+
+      expect(@checksumCalculator.calculate).toHaveBeenCalledWith(JSON.stringify({what:'ever'}), initialSum)
   

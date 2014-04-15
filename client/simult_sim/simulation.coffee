@@ -64,7 +64,8 @@ class Simulation
               when 'SimulationEvent::PlayerLeft'
                 @simState.world.playerLeft simEvent.playerId
 
-          checksum = @simulationStateSerializer.calcWorldChecksum(@simState.world)
+          checksum = @simulationStateSerializer.calcWorldChecksum(@simState.world,@simState.checksum)
+          @simState.checksum = checksum
           gameEvent.checksumClosure(checksum)
 
         when 'GameEvent::StartGame'

@@ -14,6 +14,7 @@ createSimulation = (opts={}) ->
   SimulationStateSerializer = require './simulation_state_serializer.coffee'
   UserEventSerializer = require './user_event_serializer.coffee'
   Simulation = require './simulation.coffee'
+  ChecksumCalculator = require './checksum_calculator.coffee'
 
   gameEventFactory = new GameEventFactory()
   clientMessageFactory = new ClientMessageFactory()
@@ -35,7 +36,8 @@ createSimulation = (opts={}) ->
     worldClass: opts.worldClass
   )
 
-  simulationStateSerializer = new SimulationStateSerializer(simulationStateFactory)
+  checksumCalculator = new ChecksumCalculator()
+  simulationStateSerializer = new SimulationStateSerializer(simulationStateFactory,checksumCalculator)
 
   simulation = new Simulation(
     client
