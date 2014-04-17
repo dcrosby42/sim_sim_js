@@ -96,6 +96,15 @@ TheWorld = (function(_super) {
     return this.moveSprites();
   };
 
+  TheWorld.prototype.updateControl = function(id, action, value) {
+    var sim, simState, turn;
+    this.data.players[id].controls[action] = value;
+    turn = window.local.simulation.currentTurnNumber;
+    sim = window.local.simulation;
+    simState = window.local.simulation.simState;
+    return console.log("#" + turn + " crc=" + simState.checksum);
+  };
+
   TheWorld.prototype.moveSprites = function() {
     var body, boxId, obj, position, sprite, _ref, _results;
     _ref = this.gameObjects.boxes;
@@ -207,13 +216,17 @@ TheWorld = (function(_super) {
     for (boxId in _ref) {
       boxData = _ref[boxId];
       obj = this.gameObjects.boxes[boxId];
-      pos = obj.body.GetPosition();
-      vel = obj.body.GetLinearVelocity();
-      boxData.x = pos.x;
-      boxData.y = pos.y;
-      boxData.angle = obj.body.GetAngle();
-      boxData.vx = vel.x;
-      _results.push(boxData.vy = vel.y);
+      if (obj) {
+        pos = obj.body.GetPosition();
+        vel = obj.body.GetLinearVelocity();
+        boxData.x = pos.x.fixed();
+        boxData.y = pos.y.fixed();
+        boxData.angle = obj.body.GetAngle().fixed();
+        boxData.vx = vel.x.fixed();
+        _results.push(boxData.vy = vel.y.fixed());
+      } else {
+        _results.push(void 0);
+      }
     }
     return _results;
   };
@@ -249,10 +262,6 @@ TheWorld = (function(_super) {
     box.scale.x = size;
     box.scale.y = size;
     return box;
-  };
-
-  TheWorld.prototype.updateControl = function(id, action, value) {
-    return this.data.players[id].controls[action] = value;
   };
 
   return TheWorld;
@@ -340,9 +349,14 @@ update = function() {
 
 
 },{"./keyboard_controller.coffee":3,"./simult_sim/index.coffee":9,"./simult_sim/world_base.coffee":18,"./stop_watch.coffee":19}],2:[function(require,module,exports){
-Number.prototype.fixed = function(n) {
-  n = n || 3;
-  return parseFloat(this.toFixed(n));
+Number.prototype.fixed = function() {
+  return Math.round(this * 1000) / 1000;
+};
+
+Number.prototype.fixedN = function(n) {
+  var mult;
+  mult = Math.pow(10, n);
+  return Math.round(this * mult) / mult;
 };
 
 
@@ -839,6 +853,7 @@ Simulation = (function() {
     this.simulationStateSerializer = simulationStateSerializer;
     this.userEventSerializer = userEventSerializer;
     this.lastTurnTime = 0;
+    this.currentTurnNumber = null;
     this._debugOn = false;
   }
 
@@ -886,6 +901,10 @@ Simulation = (function() {
             _this._debug("GameEvent::TurnComplete", new Date().getTime());
             _this.turnCalculator.advanceTurn(_this.simState);
             _this.lastTurnTime = timeInSeconds;
+            if (gameEvent.turnNumber !== _this.currentTurnNumber) {
+              console.log("Simulation: turn number should be " + _this.currentTurnNumber + " BUT WAS " + gameEvent.turnNumber, gameEvent);
+            }
+            _this.currentTurnNumber = gameEvent.turnNumber + 1;
             _ref = gameEvent.events;
             for (_i = 0, _len = _ref.length; _i < _len; _i++) {
               simEvent = _ref[_i];
@@ -909,13 +928,14 @@ Simulation = (function() {
                   _this.simState.world.playerLeft(simEvent.playerId);
               }
             }
-            checksum = _this.simulationStateSerializer.calcWorldChecksum(_this.simState.world, _this.simState.checksum);
+            checksum = _this.simulationStateSerializer.calcWorldChecksum(_this.simState.world);
             _this.simState.checksum = checksum;
             return gameEvent.checksumClosure(checksum);
           case 'GameEvent::StartGame':
             _this.ourId = gameEvent.ourId;
             _this.simState = _this.simulationStateSerializer.unpackSimulationState(gameEvent.gamestate);
-            return _this._debug("GameEvent::StartGame.... gameEvent is", gameEvent, "simState is", _this.simState);
+            _this.currentTurnNumber = gameEvent.currentTurn;
+            return console.log("GameEvent::StartGame. ourId=" + _this.ourId + " currentTurnNumber=" + _this.currentTurnNumber + " simState=", _this.simState);
           case 'GameEvent::GamestateRequest':
             _this.simState || (_this.simState = _this.simulationStateFactory.createSimulationState());
             packedSimState = _this.simulationStateSerializer.packSimulationState(_this.simState);
@@ -983,10 +1003,11 @@ var SimulationState;
 require('../helpers.coffee');
 
 SimulationState = (function() {
-  function SimulationState(timePerTurn, stepsPerTurn, step, world) {
+  function SimulationState(timePerTurn, stepsPerTurn, step, checksum, world) {
     this.timePerTurn = timePerTurn;
     this.stepsPerTurn = stepsPerTurn;
     this.step = step;
+    this.checksum = checksum;
     this.world = world;
     this.timePerStep = (this.timePerTurn / this.stepsPerTurn).fixed();
     this.checksum = 0;
@@ -1010,7 +1031,7 @@ SimulationStateFactory = (function() {
   }
 
   SimulationStateFactory.prototype.createSimulationState = function() {
-    return new SimulationState(this.defaults.timePerTurn, this.defaults.stepsPerTurn, 0, this.createWorld(this.defaults.worldData || null));
+    return new SimulationState(this.defaults.timePerTurn, this.defaults.stepsPerTurn, 0, 0, this.createWorld(this.defaults.worldData || null));
   };
 
   SimulationStateFactory.prototype.createWorld = function(atts) {
@@ -1044,12 +1065,13 @@ SimulationStateSerializer = (function() {
       timePerTurn: simState.timePerTurn,
       stepsPerTurn: simState.stepsPerTurn,
       step: simState.step,
+      checksum: simState.checksum,
       world: simState.world.toAttributes()
     };
   };
 
   SimulationStateSerializer.prototype.unpackSimulationState = function(data) {
-    return new SimulationState(data.timePerTurn, data.stepsPerTurn, data.step, this.simulationStateFactory.createWorld(data.world));
+    return new SimulationState(data.timePerTurn, data.stepsPerTurn, data.step, data.checksum, this.simulationStateFactory.createWorld(data.world));
   };
 
   SimulationStateSerializer.prototype.calcWorldChecksum = function(world, checksum) {

@@ -13,6 +13,7 @@ CRC32_TABLE = "00000000 77073096 EE0E612C 990951BA 076DC419 706AF48F E963A535 9E
 
 class ChecksumCalculator
   calculate: (str, crc=0) ->
+    # console.log str
     n = 0; #a number between 0 and 255
     x = 0; #an hex number
 

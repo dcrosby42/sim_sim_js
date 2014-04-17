@@ -121,6 +121,7 @@ ChecksumCalculator = (function() {
     if (crc == null) {
       crc = 0;
     }
+    console.log(str);
     n = 0;
     x = 0;
     crc = crc ^ (-1);
@@ -480,6 +481,7 @@ Simulation = (function() {
     this.simulationStateSerializer = simulationStateSerializer;
     this.userEventSerializer = userEventSerializer;
     this.lastTurnTime = 0;
+    this.lastTurnNumber = null;
     this._debugOn = false;
   }
 
@@ -527,6 +529,10 @@ Simulation = (function() {
             _this._debug("GameEvent::TurnComplete", new Date().getTime());
             _this.turnCalculator.advanceTurn(_this.simState);
             _this.lastTurnTime = timeInSeconds;
+            if (_this.lastTurnNumber !== null && gameEvent.turnNumber !== (_this.lastTurnNumber + 1)) {
+              console.log("Simulation: turn number should be " + (_this.lastTurnNumber + 1) + " BUT WAS " + gameEvent.turnNumber, gameEvent);
+            }
+            _this.lastTurnNumber = gameEvent.turnNumber;
             _ref = gameEvent.events;
             for (_i = 0, _len = _ref.length; _i < _len; _i++) {
               simEvent = _ref[_i];

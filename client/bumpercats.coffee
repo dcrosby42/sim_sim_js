@@ -72,6 +72,23 @@ class TheWorld extends WorldBase
     
     @moveSprites()
 
+  #
+  # "public"
+  #
+
+  updateControl: (id, action,value) ->
+    @data.players[id].controls[action] = value
+    turn = window.local.simulation.currentTurnNumber
+    sim = window.local.simulation
+    simState = window.local.simulation.simState
+    # console.log "turn: #{turn} updateControl player[#{id}] #{action} -> #{value}"
+    console.log "##{turn} crc=#{simState.checksum}" #world data:", simState.world.toAttributes()
+    
+
+  #
+  # Internal:
+  #
+
   moveSprites: ->
     for boxId,obj of @gameObjects.boxes
       body = obj.body
@@ -142,13 +159,14 @@ class TheWorld extends WorldBase
     # Boxes:
     for boxId,boxData of @data.boxes
       obj = @gameObjects.boxes[boxId]
-      pos = obj.body.GetPosition()
-      vel = obj.body.GetLinearVelocity()
-      boxData.x = pos.x
-      boxData.y = pos.y
-      boxData.angle = obj.body.GetAngle()
-      boxData.vx = vel.x
-      boxData.vy = vel.y
+      if obj
+        pos = obj.body.GetPosition()
+        vel = obj.body.GetLinearVelocity()
+        boxData.x = pos.x.fixed()
+        boxData.y = pos.y.fixed()
+        boxData.angle = obj.body.GetAngle().fixed()
+        boxData.vx = vel.x.fixed()
+        boxData.vy = vel.y.fixed()
 
         
   makeBoxBody: (boxData) ->
@@ -185,8 +203,6 @@ class TheWorld extends WorldBase
     box.scale.y = size
     box
 
-  updateControl: (id, action,value) ->
-    @data.players[id].controls[action] = value
 
     
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 

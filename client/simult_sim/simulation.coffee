@@ -11,6 +11,7 @@ class Simulation
       @userEventSerializer
     ) ->
     @lastTurnTime = 0
+    @currentTurnNumber = null
     @_debugOn = false
 
   worldState: ->
@@ -45,6 +46,9 @@ class Simulation
           @_debug "GameEvent::TurnComplete", new Date().getTime()
           @turnCalculator.advanceTurn @simState
           @lastTurnTime = timeInSeconds
+          if gameEvent.turnNumber != @currentTurnNumber
+            console.log "Simulation: turn number should be #{@currentTurnNumber} BUT WAS #{gameEvent.turnNumber}", gameEvent
+          @currentTurnNumber = gameEvent.turnNumber + 1
           for simEvent in gameEvent.events
             switch simEvent.type
 
@@ -64,14 +68,18 @@ class Simulation
               when 'SimulationEvent::PlayerLeft'
                 @simState.world.playerLeft simEvent.playerId
 
-          checksum = @simulationStateSerializer.calcWorldChecksum(@simState.world,@simState.checksum)
+          # checksum = @simulationStateSerializer.calcWorldChecksum(@simState.world,@simState.checksum)
+          # checksum = @simulationStateSerializer.calcWorldChecksum(@simState.world,0)
+          checksum = @simulationStateSerializer.calcWorldChecksum(@simState.world)
           @simState.checksum = checksum
           gameEvent.checksumClosure(checksum)
 
         when 'GameEvent::StartGame'
           @ourId = gameEvent.ourId
           @simState = @simulationStateSerializer.unpackSimulationState(gameEvent.gamestate)
-          @_debug "GameEvent::StartGame.... gameEvent is", gameEvent ,"simState is",@simState
+          @currentTurnNumber = gameEvent.currentTurn
+          # @_debug "GameEvent::StartGame.... gameEvent is", gameEvent ,"simState is",@simState
+          console.log "GameEvent::StartGame. ourId=#{@ourId} currentTurnNumber=#{@currentTurnNumber} simState=",@simState
 
         when 'GameEvent::GamestateRequest'
           @simState ||= @simulationStateFactory.createSimulationState()

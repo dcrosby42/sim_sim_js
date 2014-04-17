@@ -8,15 +8,16 @@ class SimulationStateSerializer
       timePerTurn: simState.timePerTurn
       stepsPerTurn: simState.stepsPerTurn
       step: simState.step
+      checksum: simState.checksum
       world: simState.world.toAttributes()
     }
 
   unpackSimulationState: (data) ->
-
     new SimulationState(
       data.timePerTurn
       data.stepsPerTurn
       data.step
+      data.checksum
       @simulationStateFactory.createWorld(data.world))
 
   calcWorldChecksum: (world,checksum) ->

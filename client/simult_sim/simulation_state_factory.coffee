@@ -8,6 +8,7 @@ class SimulationStateFactory
       @defaults.timePerTurn
       @defaults.stepsPerTurn
       0 # step
+      0 # checksum
       @createWorld(@defaults.worldData || null)
     )
 
