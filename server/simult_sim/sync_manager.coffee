@@ -17,6 +17,7 @@ class SyncManager
 
   gotChecksum: ({playerId, turnNumber, checksum, clientIds, defaultProviderId,resync}) ->
     return null if clientIds.length <= 1 # no relevance until more than 1 player
+    checksum = "#{checksum}"
     if turnNumber == @turnNumber
       @count += 1
       bros = @sums[checksum]
@@ -38,7 +39,8 @@ class SyncManager
       console.log "WAT? SyncManager got checksum for turn #{turnNumber} while expected to hear about turn #{@turnNumber}"
       return null
 
-    if @count == clientIds.length # All reporting
+    # Once we've got all player's checksum for this turn:
+    if @count == clientIds.length
       if @max == @count
         # all checksums agree, no action needed
         return null
@@ -59,7 +61,7 @@ class SyncManager
                 if @minorConsensus
                   authorityLabel = "the minority consensus"
                   authorityChecksum = @minorConsensus
-                @_debug "Requesting gamestate be sent from #{providerId} -> to -> #{errantId} because his crc #{crc} didn't match #{authorityLabel} crc #{authorityChecksum}", @sums
+                @_debug "Requesting gamestate be sent from #{providerId} -> to -> #{errantId} because his crc #{crc}(#{typeof crc}) didn't match #{authorityLabel} crc #{authorityChecksum}(#{typeof authorityChecksum})", @sums
                 resync(providerId, errantId)
   _debug: (args...) ->
     console.log ">>> [SyncManager]", args... if @_debugOn
