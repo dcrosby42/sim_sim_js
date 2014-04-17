@@ -1,6 +1,6 @@
 
 class Server
-  constructor: (@adapter, @turnManager, @serverMessageFactory) ->
+  constructor: (@adapter, @turnManager, @serverMessageFactory, @syncManager) ->
     #@logfmt = require('logfmt')
     @_debugOn = false
 
@@ -8,6 +8,7 @@ class Server
     @turnManager.on 'turn_ended', (currentTurn) =>
       @_debug "Turn #{currentTurn} ended"
       @_broadcast m.turnComplete(currentTurn)
+      @syncManager.turnEnded(currentTurn)
 
     @adapter.on 'Network::PeerConnected', (id) =>
       @_debug "Network::PeerConnected",id
@@ -42,10 +43,17 @@ class Server
           @_send msg.forPlayerId, m.startGame(msg.forPlayerId, @turnManager.period, @turnManager.current, msg.protoTurn, msg.data)
 
         when 'ClientMsg::TurnFinished'
-          _ = null
-          console.log "TurnFinished|#{id}|#{msg.turnNumber}|#{msg.checksum}"
+          @syncManager.gotChecksum(
+            playerId: id
+            turnNumber: msg.turnNumber
+            checksum: msg.checksum
+            clientIds: @adapter.clientIds.slice(0)
+            defaultProviderId: @adapter.clientIds[0]
+            resync: (fromId,toId) =>
+              console.log "TODO @_send #{fromId}, m.gamestateRequest(#{toId})"
+              # TODO @_send fromId, m.gamestateRequest(toId)
+          )
 
-          # TODO: do something toward checksu verification here
 
   _send: (id, msg) ->
     @adapter.send id, @_packServerMessage(msg)
