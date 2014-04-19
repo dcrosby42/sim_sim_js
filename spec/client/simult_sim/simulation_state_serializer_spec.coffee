@@ -14,7 +14,7 @@ describe 'SimulationStateSerialzier', ->
     @stepsPerTurn = 2
     @step = 451
     @worldAsAttributes = "the world attrs"
-    @world = { toAttributes: => @worldAsAttributes }
+    @world = { getData: => @worldAsAttributes }
     @newWorld = "the new world"
   
   describe 'packSimulationState', ->
@@ -44,14 +44,3 @@ describe 'SimulationStateSerialzier', ->
       expect(simState.world).toEqual @newWorld
       expect(@simulationStateFactory.createWorld).toHaveBeenCalledWith(@worldAsAttributes)
     
-  describe 'calcWorldChecksum', ->
-    it 'is merely a placeholder for now', ->
-      initialSum = 123
-      newChecksum = 456
-      world = { toAttributes: (-> {what:'ever'})}
-      spyOn(@checksumCalculator, 'calculate').andReturn(newChecksum)
-
-      checksum = @subject.calcWorldChecksum(world,initialSum)
-
-      expect(@checksumCalculator.calculate).toHaveBeenCalledWith(JSON.stringify({what:'ever'}), initialSum)
-  

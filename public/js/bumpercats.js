@@ -1,5 +1,5 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-var KeyboardController, PIover2, STAGE_HEIGHT, STAGE_WIDTH, SimSim, StopWatch, TheWorld, WorldBase, imageAssets, setupKeyboardController, setupPixi, setupSimulation, setupStats, setupStopWatch, update, vec2,
+var ChecksumCalculator, KeyboardController, PIover2, STAGE_HEIGHT, STAGE_WIDTH, SimSim, StopWatch, TheWorld, WorldBase, imageAssets, setupKeyboardController, setupPixi, setupSimulation, setupStats, setupStopWatch, update, vec2,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -11,23 +11,24 @@ SimSim = require('./simult_sim/index.coffee');
 
 WorldBase = require('./simult_sim/world_base.coffee');
 
+ChecksumCalculator = require('./simult_sim/checksum_calculator.coffee');
+
 vec2 = function(x, y) {
   return new Box2D.Common.Math.b2Vec2(x, y);
 };
 
 PIover2 = Math.PI / 2;
 
-STAGE_WIDTH = window.innerWidth;
+STAGE_WIDTH = 800;
 
-STAGE_HEIGHT = window.innerHeight;
+STAGE_HEIGHT = 600;
 
 window.local = {
   simulation: null,
   stopWatch: null,
   pixi: {
     stage: null,
-    renderer: null,
-    sprites: []
+    renderer: null
   },
   keyboardController: null,
   stats: null
@@ -38,13 +39,11 @@ imageAssets = ["pixibox_assets/ball.png", "pixibox_assets/box.jpg", "pixibox_ass
 TheWorld = (function(_super) {
   __extends(TheWorld, _super);
 
-  function TheWorld(data) {
-    if (data == null) {
-      data = null;
-    }
+  function TheWorld() {
+    this.checksumCalculator = new ChecksumCalculator();
     this.thrust = 0.2;
     this.turnSpeed = 0.06;
-    this.data = data || {
+    this.data = {
       nextId: 0,
       players: {},
       boxes: {}
@@ -94,6 +93,20 @@ TheWorld = (function(_super) {
     this.b2world.Step(dt, 3, 3);
     this.b2world.ClearForces();
     return this.moveSprites();
+  };
+
+  TheWorld.prototype.setData = function(data) {
+    this.data = data;
+    return this.syncNeeded = true;
+  };
+
+  TheWorld.prototype.getData = function() {
+    this.captureGameObjectsAsData();
+    return this.data;
+  };
+
+  TheWorld.prototype.getChecksum = function() {
+    return this.checksumCalculator.calculate(JSON.stringify(this.getData()));
   };
 
   TheWorld.prototype.updateControl = function(id, action, value) {
@@ -147,11 +160,6 @@ TheWorld = (function(_super) {
       }
     }
     return _results;
-  };
-
-  TheWorld.prototype.toAttributes = function() {
-    this.captureGameObjectsAsData();
-    return this.data;
   };
 
   TheWorld.prototype.nextId = function() {
@@ -294,7 +302,7 @@ setupSimulation = function() {
   url = "http://" + location.hostname + ":" + location.port;
   simulation = SimSim.create.socketIOSimulation({
     socketIO: io.connect(url),
-    worldClass: TheWorld
+    world: new TheWorld()
   });
   return window.local.simulation = simulation;
 };
@@ -348,7 +356,7 @@ update = function() {
 };
 
 
-},{"./keyboard_controller.coffee":3,"./simult_sim/index.coffee":9,"./simult_sim/world_base.coffee":18,"./stop_watch.coffee":19}],2:[function(require,module,exports){
+},{"./keyboard_controller.coffee":3,"./simult_sim/checksum_calculator.coffee":4,"./simult_sim/index.coffee":9,"./simult_sim/world_base.coffee":18,"./stop_watch.coffee":19}],2:[function(require,module,exports){
 Number.prototype.fixed = function() {
   return Math.round(this * 1000) / 1000;
 };
@@ -565,12 +573,12 @@ Client = (function(_super) {
               simEvent = _ref[_i];
               _this.simulationEventsBuffer.push(simEvent);
             }
-            return _this.preGameEventsBuffer.push(_this.gameEventFactory.startGame(msg.yourId, msg.turnPeriod, msg.currentTurn, msg.gamestate));
+            return _this.preGameEventsBuffer.push(_this.gameEventFactory.startGame(msg.yourId, msg.turnPeriod, msg.currentTurn, msg.simState, msg.worldState));
           case 'ServerMessage::GamestateRequest':
             copyOfSimEvents = _this.simulationEventsBuffer.slice(0);
             protoTurn = _this._packProtoTurn(copyOfSimEvents);
-            f = function(gamestate) {
-              return _this._sendMessage(_this.clientMessageFactory.gamestate(msg.forPlayerId, protoTurn, gamestate));
+            f = function(simState, worldState) {
+              return _this._sendMessage(_this.clientMessageFactory.gamestate(msg.forPlayerId, protoTurn, simState, worldState));
             };
             gameEvent = _this.gameEventFactory.gamestateRequest(f);
             if (_this.gameStarted) {
@@ -672,12 +680,13 @@ ClientMessageFactory = (function() {
     };
   };
 
-  ClientMessageFactory.prototype.gamestate = function(forPlayerId, protoTurn, gamestate) {
+  ClientMessageFactory.prototype.gamestate = function(forPlayerId, protoTurn, simState, worldState) {
     return {
       type: 'ClientMsg::Gamestate',
       forPlayerId: forPlayerId,
       protoTurn: protoTurn,
-      data: gamestate
+      simState: simState,
+      worldState: worldState
     };
   };
 
@@ -750,13 +759,14 @@ GameEventFactory = (function() {
     };
   };
 
-  GameEventFactory.prototype.startGame = function(ourId, turnPeriod, currentTurn, gamestate) {
+  GameEventFactory.prototype.startGame = function(ourId, turnPeriod, currentTurn, simState, worldState) {
     return {
       type: 'GameEvent::StartGame',
       ourId: ourId,
       turnPeriod: turnPeriod,
       currentTurn: currentTurn,
-      gamestate: gamestate
+      simState: simState,
+      worldState: worldState
     };
   };
 
@@ -782,15 +792,15 @@ var createSimulation, createSimulationUsingSocketIO, createSocketIOClientAdapter
 require('../helpers.coffee');
 
 createSimulation = function(opts) {
-  var ChecksumCalculator, Client, ClientMessageFactory, GameEventFactory, Simulation, SimulationEventFactory, SimulationStateFactory, SimulationStateSerializer, TurnCalculator, UserEventSerializer, checksumCalculator, client, clientMessageFactory, gameEventFactory, simulation, simulationEventFactory, simulationStateFactory, simulationStateSerializer, turnCalculator, userEventSerializer;
+  var Client, ClientMessageFactory, GameEventFactory, Simulation, SimulationEventFactory, SimulationStateFactory, SimulationStateSerializer, TurnCalculator, UserEventSerializer, client, clientMessageFactory, gameEventFactory, simulation, simulationEventFactory, simulationStateFactory, simulationStateSerializer, turnCalculator, userEventSerializer;
   if (opts == null) {
     opts = {};
   }
   if (!opts.adapter) {
     throw new error("Cannot build simulation without network adapter, such as SocketIOClientAdapter");
   }
-  if (!opts.worldClass) {
-    throw new Error("Cannot build simulation without worldClass, which must implement interface WorldBase");
+  if (!opts.world) {
+    throw new Error("Cannot build simulation without an instane of 'world', which must implement interface WorldBase");
   }
   GameEventFactory = require('./game_event_factory.coffee');
   ClientMessageFactory = require('./client_message_factory.coffee');
@@ -801,7 +811,6 @@ createSimulation = function(opts) {
   SimulationStateSerializer = require('./simulation_state_serializer.coffee');
   UserEventSerializer = require('./user_event_serializer.coffee');
   Simulation = require('./simulation.coffee');
-  ChecksumCalculator = require('./checksum_calculator.coffee');
   gameEventFactory = new GameEventFactory();
   clientMessageFactory = new ClientMessageFactory();
   simulationEventFactory = new SimulationEventFactory();
@@ -811,12 +820,10 @@ createSimulation = function(opts) {
   simulationStateFactory = new SimulationStateFactory({
     timePerTurn: opts.timesPerTurn || 0.1,
     stepsPerTurn: opts.stepsPerTurn || 6,
-    step: opts.step || 0,
-    worldClass: opts.worldClass
+    step: opts.step || 0
   });
-  checksumCalculator = new ChecksumCalculator();
-  simulationStateSerializer = new SimulationStateSerializer(simulationStateFactory, checksumCalculator);
-  simulation = new Simulation(client, turnCalculator, simulationStateFactory, simulationStateSerializer, userEventSerializer);
+  simulationStateSerializer = new SimulationStateSerializer(simulationStateFactory);
+  simulation = new Simulation(opts.world, client, turnCalculator, simulationStateFactory, simulationStateSerializer, userEventSerializer);
   return simulation;
 };
 
@@ -839,14 +846,15 @@ exports.create = {
 };
 
 
-},{"../helpers.coffee":2,"./checksum_calculator.coffee":4,"./client.coffee":5,"./client_message_factory.coffee":6,"./game_event_factory.coffee":8,"./simulation.coffee":10,"./simulation_event_factory.coffee":11,"./simulation_state_factory.coffee":13,"./simulation_state_serializer.coffee":14,"./socket_io_client_adapter.coffee":15,"./turn_calculator.coffee":16,"./user_event_serializer.coffee":17}],10:[function(require,module,exports){
+},{"../helpers.coffee":2,"./client.coffee":5,"./client_message_factory.coffee":6,"./game_event_factory.coffee":8,"./simulation.coffee":10,"./simulation_event_factory.coffee":11,"./simulation_state_factory.coffee":13,"./simulation_state_serializer.coffee":14,"./socket_io_client_adapter.coffee":15,"./turn_calculator.coffee":16,"./user_event_serializer.coffee":17}],10:[function(require,module,exports){
 var Simulation,
   __slice = [].slice;
 
 require('../helpers.coffee');
 
 Simulation = (function() {
-  function Simulation(client, turnCalculator, simulationStateFactory, simulationStateSerializer, userEventSerializer) {
+  function Simulation(world, client, turnCalculator, simulationStateFactory, simulationStateSerializer, userEventSerializer) {
+    this.world = world;
     this.client = client;
     this.turnCalculator = turnCalculator;
     this.simulationStateFactory = simulationStateFactory;
@@ -858,9 +866,7 @@ Simulation = (function() {
   }
 
   Simulation.prototype.worldState = function() {
-    if (this.simState) {
-      return this.simState.world;
-    }
+    return this.world;
   };
 
   Simulation.prototype.clientId = function() {
@@ -891,15 +897,15 @@ Simulation = (function() {
     var elapsedTurnTime;
     if (this.simState) {
       elapsedTurnTime = (timeInSeconds - this.lastTurnTime).fixed();
-      this.turnCalculator.stepUntilTurnTime(this.simState, elapsedTurnTime);
+      this.turnCalculator.stepUntilTurnTime(this.simState, this.world, elapsedTurnTime);
     }
     return this.client.update((function(_this) {
       return function(gameEvent) {
-        var checksum, packedSimState, simEvent, userEvent, _i, _len, _ref, _ref1;
+        var packedSimState, simEvent, userEvent, _i, _len, _ref, _ref1;
         switch (gameEvent.type) {
           case 'GameEvent::TurnComplete':
             _this._debug("GameEvent::TurnComplete", new Date().getTime());
-            _this.turnCalculator.advanceTurn(_this.simState);
+            _this.turnCalculator.advanceTurn(_this.simState, _this.world);
             _this.lastTurnTime = timeInSeconds;
             if (gameEvent.turnNumber !== _this.currentTurnNumber) {
               console.log("Simulation: turn number should be " + _this.currentTurnNumber + " BUT WAS " + gameEvent.turnNumber, gameEvent);
@@ -912,34 +918,33 @@ Simulation = (function() {
                 case 'SimulationEvent::Event':
                   userEvent = _this.userEventSerializer.unpack(simEvent.data);
                   if (userEvent.type === 'UserEvent::WorldProxyEvent') {
-                    if (_this.simState.world[userEvent.method]) {
-                      (_ref1 = _this.simState.world)[userEvent.method].apply(_ref1, [simEvent.playerId].concat(__slice.call(userEvent.args)));
+                    if (_this.world[userEvent.method]) {
+                      (_ref1 = _this.world)[userEvent.method].apply(_ref1, [simEvent.playerId].concat(__slice.call(userEvent.args)));
                     } else {
                       throw new Error("WorldProxyEvent with method " + userEvent.method + " CANNOT BE APPLIED because the world object doesn't have that method!");
                     }
                   } else {
-                    _this.simState.world.incomingEvent(simEvent.playerId, userEvent);
+                    _this.world.incomingEvent(simEvent.playerId, userEvent);
                   }
                   break;
                 case 'SimulationEvent::PlayerJoined':
-                  _this.simState.world.playerJoined(simEvent.playerId);
+                  _this.world.playerJoined(simEvent.playerId);
                   break;
                 case 'SimulationEvent::PlayerLeft':
-                  _this.simState.world.playerLeft(simEvent.playerId);
+                  _this.world.playerLeft(simEvent.playerId);
               }
             }
-            checksum = _this.simulationStateSerializer.calcWorldChecksum(_this.simState.world);
-            _this.simState.checksum = checksum;
-            return gameEvent.checksumClosure(checksum);
+            return gameEvent.checksumClosure(_this.world.getChecksum());
           case 'GameEvent::StartGame':
             _this.ourId = gameEvent.ourId;
-            _this.simState = _this.simulationStateSerializer.unpackSimulationState(gameEvent.gamestate);
             _this.currentTurnNumber = gameEvent.currentTurn;
-            return console.log("GameEvent::StartGame. ourId=" + _this.ourId + " currentTurnNumber=" + _this.currentTurnNumber + " simState=", _this.simState);
+            _this.simState = _this.simulationStateSerializer.unpackSimulationState(gameEvent.simState);
+            _this.world.setData(gameEvent.worldState);
+            return console.log("GameEvent::StartGame. ourId=" + _this.ourId + " currentTurnNumber=" + _this.currentTurnNumber + " simState=", _this.simState, "worldState=", gameEvent.worldState);
           case 'GameEvent::GamestateRequest':
             _this.simState || (_this.simState = _this.simulationStateFactory.createSimulationState());
             packedSimState = _this.simulationStateSerializer.packSimulationState(_this.simState);
-            return gameEvent.gamestateClosure(packedSimState);
+            return gameEvent.gamestateClosure(packedSimState, _this.world.getData());
           case 'GameEvent::Disconnected':
             return _this.simState = null;
         }
@@ -1003,14 +1008,11 @@ var SimulationState;
 require('../helpers.coffee');
 
 SimulationState = (function() {
-  function SimulationState(timePerTurn, stepsPerTurn, step, checksum, world) {
+  function SimulationState(timePerTurn, stepsPerTurn, step) {
     this.timePerTurn = timePerTurn;
     this.stepsPerTurn = stepsPerTurn;
     this.step = step;
-    this.checksum = checksum;
-    this.world = world;
     this.timePerStep = (this.timePerTurn / this.stepsPerTurn).fixed();
-    this.checksum = 0;
   }
 
   return SimulationState;
@@ -1031,15 +1033,7 @@ SimulationStateFactory = (function() {
   }
 
   SimulationStateFactory.prototype.createSimulationState = function() {
-    return new SimulationState(this.defaults.timePerTurn, this.defaults.stepsPerTurn, 0, 0, this.createWorld(this.defaults.worldData || null));
-  };
-
-  SimulationStateFactory.prototype.createWorld = function(atts) {
-    if (this.defaults.worldClass) {
-      return new this.defaults.worldClass(atts);
-    } else {
-      throw new Error("SimulationStateFactory needs a worldClass");
-    }
+    return new SimulationState(this.defaults.timePerTurn, this.defaults.stepsPerTurn, 0);
   };
 
   return SimulationStateFactory;
@@ -1055,27 +1049,20 @@ var SimulationState, SimulationStateSerializer;
 SimulationState = require('./simulation_state.coffee');
 
 SimulationStateSerializer = (function() {
-  function SimulationStateSerializer(simulationStateFactory, checksumCalculator) {
+  function SimulationStateSerializer(simulationStateFactory) {
     this.simulationStateFactory = simulationStateFactory;
-    this.checksumCalculator = checksumCalculator;
   }
 
   SimulationStateSerializer.prototype.packSimulationState = function(simState) {
     return {
       timePerTurn: simState.timePerTurn,
       stepsPerTurn: simState.stepsPerTurn,
-      step: simState.step,
-      checksum: simState.checksum,
-      world: simState.world.toAttributes()
+      step: simState.step
     };
   };
 
   SimulationStateSerializer.prototype.unpackSimulationState = function(data) {
-    return new SimulationState(data.timePerTurn, data.stepsPerTurn, data.step, data.checksum, this.simulationStateFactory.createWorld(data.world));
-  };
-
-  SimulationStateSerializer.prototype.calcWorldChecksum = function(world, checksum) {
-    return this.checksumCalculator.calculate(JSON.stringify(world.toAttributes()), checksum);
+    return new SimulationState(data.timePerTurn, data.stepsPerTurn, data.step);
   };
 
   return SimulationStateSerializer;
@@ -1135,18 +1122,18 @@ require('../helpers.coffee');
 TurnCalculator = (function() {
   function TurnCalculator() {}
 
-  TurnCalculator.prototype.advanceTurn = function(simState) {
-    this.stepUntil(simState, simState.stepsPerTurn);
+  TurnCalculator.prototype.advanceTurn = function(simState, world) {
+    this.stepUntil(simState, world, simState.stepsPerTurn);
     return simState.step = 0;
   };
 
-  TurnCalculator.prototype.stepUntilTurnTime = function(simState, turnTime) {
+  TurnCalculator.prototype.stepUntilTurnTime = function(simState, world, turnTime) {
     var shouldBeStep;
     shouldBeStep = Math.round(turnTime / simState.timePerStep);
-    return this.stepUntil(simState, shouldBeStep);
+    return this.stepUntil(simState, world, shouldBeStep);
   };
 
-  TurnCalculator.prototype.stepUntil = function(simState, n) {
+  TurnCalculator.prototype.stepUntil = function(simState, world, n) {
     var limit, _results;
     limit = simState.stepsPerTurn;
     if (n < limit) {
@@ -1155,7 +1142,7 @@ TurnCalculator = (function() {
     _results = [];
     while (simState.step < limit) {
       simState.step += 1;
-      _results.push(simState.world.step(simState.timePerStep));
+      _results.push(world.step(simState.timePerStep));
     }
     return _results;
   };
@@ -1194,6 +1181,18 @@ var WorldBase;
 WorldBase = (function() {
   function WorldBase() {}
 
+  WorldBase.prototype.getData = function() {
+    throw new Error("Please implement WorldBase#getData");
+  };
+
+  WorldBase.prototype.setData = function(data) {
+    throw new Error("Please implement WorldBase#setData");
+  };
+
+  WorldBase.prototype.getChecksum = function() {
+    throw new Error("Please implement WorldBase#getChecksum");
+  };
+
   WorldBase.prototype.playerJoined = function(id) {
     throw new Error("Please implement WorldBase#playerJoined");
   };
@@ -1208,10 +1207,6 @@ WorldBase = (function() {
 
   WorldBase.prototype.step = function(dt) {
     throw new Error("Please implement WorldBase#step");
-  };
-
-  WorldBase.prototype.toAttributes = function() {
-    throw new Error("Please implement WorldBase#toAttributes");
   };
 
   return WorldBase;

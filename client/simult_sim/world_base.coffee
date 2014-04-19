@@ -1,4 +1,10 @@
 class WorldBase
+  getData: ->
+    throw new Error("Please implement WorldBase#getData")
+  setData: (data) ->
+    throw new Error("Please implement WorldBase#setData")
+  getChecksum: ->
+    throw new Error("Please implement WorldBase#getChecksum")
   playerJoined: (id) ->
     throw new Error("Please implement WorldBase#playerJoined")
   playerLeft: (id) ->
@@ -7,8 +13,5 @@ class WorldBase
     throw new Error("Please implement WorldBase#incomingEvent")
   step: (dt) ->
     throw new Error("Please implement WorldBase#step")
-
-  toAttributes: ->
-    throw new Error("Please implement WorldBase#toAttributes")
 
 module.exports = WorldBase

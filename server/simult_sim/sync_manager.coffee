@@ -36,7 +36,7 @@ class SyncManager
 
     else
       # TODO: this actually happens pretty often, do something smarter
-      console.log "WAT? SyncManager got checksum for turn #{turnNumber} while expected to hear about turn #{@turnNumber}"
+      # console.log "WAT? SyncManager got checksum for turn #{turnNumber} while expected to hear about turn #{@turnNumber}"
       return null
 
     # Once we've got all player's checksum for this turn:

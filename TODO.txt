@@ -12,8 +12,16 @@ Actual Serialization!
   (but we need packing eventually for efficiency)
 
 
+---
+World
+  getData
+  setData
+  getChecksum
+  playerJoined
+  playerLeft
+  <proxied methods>
 
-
-    
-
-
+Simulation:
+  ? -> worldState()
+  ? -> GameEvent::Disconnected
+  ? -> quit()

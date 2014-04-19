@@ -36,14 +36,15 @@ class ServerMessageFactory
       forPlayerId: id
     }
 
-  startGame: (forPlayerId, turnPeriod, currentTurn, protoTurn, gamestateData) ->
+  startGame: (forPlayerId, turnPeriod, currentTurn, protoTurn, simState, worldState) ->
     {
       type: 'ServerMessage::StartGame'
       yourId: forPlayerId
       turnPeriod: turnPeriod
       currentTurn: currentTurn
       protoTurn: protoTurn
-      gamestate: gamestateData
+      simState: simState
+      worldState: worldState
     }
 
 module.exports = ServerMessageFactory

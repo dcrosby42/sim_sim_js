@@ -2,19 +2,19 @@ require '../helpers.coffee'
 
 class TurnCalculator
 
-  advanceTurn: (simState) ->
-    @stepUntil simState, simState.stepsPerTurn
+  advanceTurn: (simState,world) ->
+    @stepUntil simState, world, simState.stepsPerTurn
     simState.step = 0
 
-  stepUntilTurnTime: (simState, turnTime) ->
+  stepUntilTurnTime: (simState, world, turnTime) ->
     shouldBeStep = Math.round(turnTime / simState.timePerStep)
-    @stepUntil simState, shouldBeStep
+    @stepUntil simState, world, shouldBeStep
 
-  stepUntil: (simState,n) ->
+  stepUntil: (simState,world,n) ->
     limit = simState.stepsPerTurn
     limit = n if n < limit
     while simState.step < limit
       simState.step += 1
-      simState.world.step simState.timePerStep
+      world.step simState.timePerStep
 
 module.exports = TurnCalculator

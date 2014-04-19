@@ -2,7 +2,7 @@
 class Server
   constructor: (@adapter, @turnManager, @serverMessageFactory, @syncManager) ->
     #@logfmt = require('logfmt')
-    @_debugOn = false
+    @_debugOn = true
 
     m = @serverMessageFactory
     @turnManager.on 'turn_ended', (currentTurn) =>
@@ -40,7 +40,7 @@ class Server
         when 'ClientMsg::Event'
           @_broadcast m.event(id, msg.data)
         when 'ClientMsg::Gamestate'
-          @_send msg.forPlayerId, m.startGame(msg.forPlayerId, @turnManager.period, @turnManager.current, msg.protoTurn, msg.data)
+          @_send msg.forPlayerId, m.startGame(msg.forPlayerId, @turnManager.period, @turnManager.current, msg.protoTurn, msg.simState, msg.worldState)
 
         when 'ClientMsg::TurnFinished'
           @syncManager.gotChecksum(

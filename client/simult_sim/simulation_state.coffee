@@ -3,10 +3,7 @@ require '../helpers.coffee'
 class SimulationState
   constructor: (@timePerTurn,
                 @stepsPerTurn,
-                @step,
-                @checksum,
-                @world) ->
+                @step) ->
     @timePerStep = (@timePerTurn / @stepsPerTurn).fixed()
-    @checksum = 0
 
 module.exports = SimulationState

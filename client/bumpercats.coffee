@@ -2,13 +2,17 @@ StopWatch = require './stop_watch.coffee'
 KeyboardController = require './keyboard_controller.coffee'
 SimSim = require './simult_sim/index.coffee'
 WorldBase = require './simult_sim/world_base.coffee'
+ChecksumCalculator = require './simult_sim/checksum_calculator.coffee'
         
 vec2 = (x,y) -> new Box2D.Common.Math.b2Vec2(x,y)
 
 PIover2 = Math.PI/2
 
-STAGE_WIDTH = window.innerWidth
-STAGE_HEIGHT = window.innerHeight
+# STAGE_WIDTH = window.innerWidth
+# STAGE_HEIGHT = window.innerHeight
+
+STAGE_WIDTH = 800
+STAGE_HEIGHT = 600
 
 window.local =
   simulation: null
@@ -16,7 +20,6 @@ window.local =
   pixi:
     stage: null
     renderer: null
-    sprites: []
   keyboardController: null
   stats: null
 
@@ -28,11 +31,12 @@ imageAssets = [
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 class TheWorld extends WorldBase
-  constructor: (data=null) ->
+  constructor: () ->
+    @checksumCalculator = new ChecksumCalculator()
     @thrust = 0.2
     @turnSpeed = 0.06
 
-    @data = data || {
+    @data = {
       nextId: 0
       players: {}
       boxes: {}
@@ -41,6 +45,7 @@ class TheWorld extends WorldBase
       boxes: {}
     @setupPhysics()
     @syncNeeded = true
+
 
   playerJoined: (id) ->
     boxId = "B#{@nextId()}"
@@ -71,9 +76,20 @@ class TheWorld extends WorldBase
     @b2world.ClearForces()
     
     @moveSprites()
+  
+  setData: (data) ->
+    @data = data
+    @syncNeeded = true
+
+  getData: ->
+    @captureGameObjectsAsData()
+    @data
+
+  getChecksum: ->
+    @checksumCalculator.calculate JSON.stringify(@getData())
 
   #
-  # "public"
+  # Invocable via proxy:
   #
 
   updateControl: (id, action,value) ->
@@ -82,7 +98,7 @@ class TheWorld extends WorldBase
     sim = window.local.simulation
     simState = window.local.simulation.simState
     # console.log "turn: #{turn} updateControl player[#{id}] #{action} -> #{value}"
-    console.log "##{turn} crc=#{simState.checksum}" #world data:", simState.world.toAttributes()
+    console.log "##{turn} crc=#{simState.checksum}" 
     
 
   #
@@ -114,10 +130,6 @@ class TheWorld extends WorldBase
       if con.right
         a = body.GetAngle()
         body.SetAngle(a + @turnSpeed)
-
-  toAttributes: ->
-    @captureGameObjectsAsData()
-    return @data
 
   nextId: ->
     nid = @data.nextId
@@ -227,7 +239,7 @@ setupSimulation = ->
   url = "http://#{location.hostname}:#{location.port}"
   simulation = SimSim.create.socketIOSimulation
     socketIO: io.connect(url)
-    worldClass: TheWorld
+    world: new TheWorld()
   window.local.simulation = simulation
 
 setupStats = ->
@@ -265,7 +277,7 @@ update = ->
   requestAnimationFrame(update)
 
   sim = window.local.simulation
-  for action,value of  window.local.keyboardController.update()
+  for action,value of window.local.keyboardController.update()
     sim.worldProxy "updateControl", action, value
   
   sim.update(window.local.stopWatch.elapsedSeconds())

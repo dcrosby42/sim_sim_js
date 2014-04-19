@@ -4,6 +4,7 @@ require '../helpers.coffee'
 
 class Simulation
   constructor: (
+      @world
       @client
       @turnCalculator
       @simulationStateFactory
@@ -15,7 +16,7 @@ class Simulation
     @_debugOn = false
 
   worldState: ->
-    @simState.world if @simState
+    @world
 
   clientId: ->
     @client.clientId
@@ -38,13 +39,13 @@ class Simulation
   update: (timeInSeconds) ->
     if @simState
       elapsedTurnTime = (timeInSeconds - @lastTurnTime).fixed()
-      @turnCalculator.stepUntilTurnTime @simState, elapsedTurnTime
+      @turnCalculator.stepUntilTurnTime @simState, @world, elapsedTurnTime
 
     @client.update (gameEvent) =>
       switch gameEvent.type
         when 'GameEvent::TurnComplete'
           @_debug "GameEvent::TurnComplete", new Date().getTime()
-          @turnCalculator.advanceTurn @simState
+          @turnCalculator.advanceTurn @simState, @world
           @lastTurnTime = timeInSeconds
           if gameEvent.turnNumber != @currentTurnNumber
             console.log "Simulation: turn number should be #{@currentTurnNumber} BUT WAS #{gameEvent.turnNumber}", gameEvent
@@ -55,36 +56,32 @@ class Simulation
               when 'SimulationEvent::Event'
                 userEvent = @userEventSerializer.unpack(simEvent.data)
                 if userEvent.type == 'UserEvent::WorldProxyEvent'
-                  if @simState.world[userEvent.method]
-                    @simState.world[userEvent.method](simEvent.playerId, userEvent.args...)
+                  if @world[userEvent.method]
+                    @world[userEvent.method](simEvent.playerId, userEvent.args...)
                   else
                     throw new Error("WorldProxyEvent with method #{userEvent.method} CANNOT BE APPLIED because the world object doesn't have that method!")
                 else
-                  @simState.world.incomingEvent(simEvent.playerId, userEvent)
+                  @world.incomingEvent(simEvent.playerId, userEvent)
 
               when 'SimulationEvent::PlayerJoined'
-                @simState.world.playerJoined simEvent.playerId
+                @world.playerJoined simEvent.playerId
 
               when 'SimulationEvent::PlayerLeft'
-                @simState.world.playerLeft simEvent.playerId
+                @world.playerLeft simEvent.playerId
 
-          # checksum = @simulationStateSerializer.calcWorldChecksum(@simState.world,@simState.checksum)
-          # checksum = @simulationStateSerializer.calcWorldChecksum(@simState.world,0)
-          checksum = @simulationStateSerializer.calcWorldChecksum(@simState.world)
-          @simState.checksum = checksum
-          gameEvent.checksumClosure(checksum)
+          gameEvent.checksumClosure @world.getChecksum()
 
         when 'GameEvent::StartGame'
           @ourId = gameEvent.ourId
-          @simState = @simulationStateSerializer.unpackSimulationState(gameEvent.gamestate)
           @currentTurnNumber = gameEvent.currentTurn
-          # @_debug "GameEvent::StartGame.... gameEvent is", gameEvent ,"simState is",@simState
-          console.log "GameEvent::StartGame. ourId=#{@ourId} currentTurnNumber=#{@currentTurnNumber} simState=",@simState
+          @simState = @simulationStateSerializer.unpackSimulationState(gameEvent.simState)
+          @world.setData(gameEvent.worldState)
+          console.log "GameEvent::StartGame. ourId=#{@ourId} currentTurnNumber=#{@currentTurnNumber} simState=",@simState, "worldState=", gameEvent.worldState
 
         when 'GameEvent::GamestateRequest'
           @simState ||= @simulationStateFactory.createSimulationState()
           packedSimState = @simulationStateSerializer.packSimulationState(@simState)
-          gameEvent.gamestateClosure(packedSimState)
+          gameEvent.gamestateClosure(packedSimState,@world.getData())
 
         when 'GameEvent::Disconnected'
           @simState = null

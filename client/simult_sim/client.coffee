@@ -37,16 +37,17 @@ class Client extends EventEmitter
           for simEvent in @_unpackProtoTurn(msg.protoTurn)
             @simulationEventsBuffer.push simEvent
 
-          @preGameEventsBuffer.push @gameEventFactory.startGame(msg.yourId, msg.turnPeriod, msg.currentTurn, msg.gamestate)
+          @preGameEventsBuffer.push @gameEventFactory.startGame(msg.yourId, msg.turnPeriod, msg.currentTurn, msg.simState, msg.worldState)
 
         when 'ServerMessage::GamestateRequest'
           copyOfSimEvents = @simulationEventsBuffer.slice(0)
           protoTurn = @_packProtoTurn(copyOfSimEvents)
-          f = (gamestate) =>
+          f = (simState,worldState) =>
             @_sendMessage @clientMessageFactory.gamestate(
-              msg.forPlayerId,
-              protoTurn,
-              gamestate
+              msg.forPlayerId
+              protoTurn
+              simState
+              worldState
             )
           gameEvent = @gameEventFactory.gamestateRequest(f)
           if @gameStarted

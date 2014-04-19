@@ -6,12 +6,13 @@ class ClientMessageFactory
       checksum: checksum
     }
 
-  gamestate: (forPlayerId, protoTurn, gamestate) ->
+  gamestate: (forPlayerId, protoTurn, simState, worldState) ->
     {
       type: 'ClientMsg::Gamestate'
       forPlayerId: forPlayerId
       protoTurn: protoTurn
-      data: gamestate
+      simState: simState
+      worldState: worldState
     }
 
   event: (data) ->
