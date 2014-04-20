@@ -37,16 +37,19 @@ class TheWorld extends WorldBase
     @thrust = 0.2
     @turnSpeed = 0.06
 
-    @data = {
-      nextId: 0
-      players: {}
-      boxes: {}
-    }
+    @data = @defaultData()
+    
     @gameObjects =
       boxes: {}
     @setupPhysics()
     @syncNeeded = true
 
+  defaultData: ->
+    {
+      nextId: 0
+      players: {}
+      boxes: {}
+    }
 
   playerJoined: (id) ->
     boxId = "B#{@nextId()}"
@@ -79,8 +82,12 @@ class TheWorld extends WorldBase
     @moveSprites()
   
   setData: (data) ->
+    @data = @defaultData()
+    @syncNeeded = true
+    @syncDataToGameObjects()
     @data = data
     @syncNeeded = true
+    
 
   getData: ->
     @captureGameObjectsAsData()
@@ -97,8 +104,7 @@ class TheWorld extends WorldBase
     @data.players[id].controls[action] = value
     turn = window.local.simulation.currentTurnNumber
     sim = window.local.simulation
-    # console.log "turn: #{turn} updateControl player[#{id}] #{action} -> #{value}"
-    console.log "##{turn} crc=#{@getChecksum()}"
+    # console.log "##{turn} crc=#{@getChecksum()}"
     
 
   #
@@ -295,3 +301,14 @@ window.dropEvents = ->
 window.stopDroppingEvents = ->
   console.log "Stop dropping events"
   window.local.vars.dropEvents = false
+
+window.takeSnapshot = ->
+  d = window.local.simulation.world.getData()
+  ss = JSON.parse(JSON.stringify(d))
+  console.log ss
+  window.local.vars.snapshot = ss
+
+window.restoreSnapshot = ->
+  ss = window.local.vars.snapshot
+  console.log ss
+  window.local.simulation.world.setData ss

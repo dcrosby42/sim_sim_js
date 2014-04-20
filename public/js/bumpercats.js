@@ -44,17 +44,21 @@ TheWorld = (function(_super) {
     this.checksumCalculator = new ChecksumCalculator();
     this.thrust = 0.2;
     this.turnSpeed = 0.06;
-    this.data = {
-      nextId: 0,
-      players: {},
-      boxes: {}
-    };
+    this.data = this.defaultData();
     this.gameObjects = {
       boxes: {}
     };
     this.setupPhysics();
     this.syncNeeded = true;
   }
+
+  TheWorld.prototype.defaultData = function() {
+    return {
+      nextId: 0,
+      players: {},
+      boxes: {}
+    };
+  };
 
   TheWorld.prototype.playerJoined = function(id) {
     var boxId;
@@ -97,6 +101,9 @@ TheWorld = (function(_super) {
   };
 
   TheWorld.prototype.setData = function(data) {
+    this.data = this.defaultData();
+    this.syncNeeded = true;
+    this.syncDataToGameObjects();
     this.data = data;
     return this.syncNeeded = true;
   };
@@ -114,8 +121,7 @@ TheWorld = (function(_super) {
     var sim, turn;
     this.data.players[id].controls[action] = value;
     turn = window.local.simulation.currentTurnNumber;
-    sim = window.local.simulation;
-    return console.log("#" + turn + " crc=" + (this.getChecksum()));
+    return sim = window.local.simulation;
   };
 
   TheWorld.prototype.moveSprites = function() {
@@ -363,6 +369,21 @@ window.dropEvents = function() {
 window.stopDroppingEvents = function() {
   console.log("Stop dropping events");
   return window.local.vars.dropEvents = false;
+};
+
+window.takeSnapshot = function() {
+  var d, ss;
+  d = window.local.simulation.world.getData();
+  ss = JSON.parse(JSON.stringify(d));
+  console.log(ss);
+  return window.local.vars.snapshot = ss;
+};
+
+window.restoreSnapshot = function() {
+  var ss;
+  ss = window.local.vars.snapshot;
+  console.log(ss);
+  return window.local.simulation.world.setData(ss);
 };
 
 
