@@ -22,6 +22,7 @@ window.local =
     renderer: null
   keyboardController: null
   stats: null
+  vars: {}
 
 imageAssets = [
   "pixibox_assets/ball.png",
@@ -96,9 +97,8 @@ class TheWorld extends WorldBase
     @data.players[id].controls[action] = value
     turn = window.local.simulation.currentTurnNumber
     sim = window.local.simulation
-    simState = window.local.simulation.simState
     # console.log "turn: #{turn} updateControl player[#{id}] #{action} -> #{value}"
-    console.log "##{turn} crc=#{simState.checksum}" 
+    console.log "##{turn} crc=#{@getChecksum()}"
     
 
   #
@@ -287,3 +287,11 @@ update = ->
   window.local.stats.update()
 
 
+
+window.dropEvents = ->
+  console.log "Drop events"
+  window.local.vars.dropEvents = true
+
+window.stopDroppingEvents = ->
+  console.log "Stop dropping events"
+  window.local.vars.dropEvents = false

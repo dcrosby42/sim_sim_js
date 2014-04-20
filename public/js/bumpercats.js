@@ -31,7 +31,8 @@ window.local = {
     renderer: null
   },
   keyboardController: null,
-  stats: null
+  stats: null,
+  vars: {}
 };
 
 imageAssets = ["pixibox_assets/ball.png", "pixibox_assets/box.jpg", "pixibox_assets/bumpercat_red.png"];
@@ -110,12 +111,11 @@ TheWorld = (function(_super) {
   };
 
   TheWorld.prototype.updateControl = function(id, action, value) {
-    var sim, simState, turn;
+    var sim, turn;
     this.data.players[id].controls[action] = value;
     turn = window.local.simulation.currentTurnNumber;
     sim = window.local.simulation;
-    simState = window.local.simulation.simState;
-    return console.log("#" + turn + " crc=" + simState.checksum);
+    return console.log("#" + turn + " crc=" + (this.getChecksum()));
   };
 
   TheWorld.prototype.moveSprites = function() {
@@ -353,6 +353,16 @@ update = function() {
   sim.update(window.local.stopWatch.elapsedSeconds());
   window.local.pixi.renderer.render(window.local.pixi.stage);
   return window.local.stats.update();
+};
+
+window.dropEvents = function() {
+  console.log("Drop events");
+  return window.local.vars.dropEvents = true;
+};
+
+window.stopDroppingEvents = function() {
+  console.log("Stop dropping events");
+  return window.local.vars.dropEvents = false;
 };
 
 
@@ -1089,7 +1099,12 @@ SocketIOClientAdapter = (function(_super) {
     }
     this.socket.on('data', (function(_this) {
       return function(data) {
-        return _this.emit('ClientAdapter::Packet', data);
+        var _;
+        if (window.local && window.local.vars && window.local.vars.dropEvents) {
+          return _ = null;
+        } else {
+          return _this.emit('ClientAdapter::Packet', data);
+        }
       };
     })(this));
     this.socket.on('disconnect', (function(_this) {

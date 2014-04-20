@@ -1,6 +1,6 @@
 class SyncManager
   constructor: ->
-    @_debugOn = true
+    @_debugOn = false
 
     @sums = {}
     @count = 0

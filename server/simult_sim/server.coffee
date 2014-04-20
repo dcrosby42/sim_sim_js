@@ -1,8 +1,7 @@
 
 class Server
   constructor: (@adapter, @turnManager, @serverMessageFactory, @syncManager) ->
-    #@logfmt = require('logfmt')
-    @_debugOn = true
+    @_debugOn = false
 
     m = @serverMessageFactory
     @turnManager.on 'turn_ended', (currentTurn) =>
@@ -15,13 +14,11 @@ class Server
       @_send id, m.idAssigned(id)
       stateProviderId = @_selectOtherPlayer(id)
       @_debug "  (selected player #{stateProviderId} to provide state to newcomer #{id})"
-      #@logfmt.log {selectedOtherPlayer: stateProviderId}
       
       if @adapter.clientCount() == 1
-        @_debug "  (first player in is #{id}, starting turn manager)"
-        # hacksie: id == stateProviderId implies we're the first player.
-        # Start the turn manager
+        # First player on the scene -> start counting turns
         @turnManager.start()
+
       # Ask someone to send the state to the new player
       @_send stateProviderId, m.gamestateRequest(id)
       @_broadcast m.playerJoined(id)
@@ -50,8 +47,8 @@ class Server
             clientIds: @adapter.clientIds.slice(0)
             defaultProviderId: @adapter.clientIds[0]
             resync: (fromId,toId) =>
-              console.log "TODO @_send #{fromId}, m.gamestateRequest(#{toId})"
-              # TODO @_send fromId, m.gamestateRequest(toId)
+              console.log "SENDING @_send #{fromId}, m.gamestateRequest(#{toId})"
+              @_send fromId, m.gamestateRequest(toId)
           )
 
 
