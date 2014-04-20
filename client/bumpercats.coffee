@@ -1,12 +1,12 @@
+
 StopWatch = require './stop_watch.coffee'
 KeyboardController = require './keyboard_controller.coffee'
-SimSim = require './simult_sim/index.coffee'
-WorldBase = require './simult_sim/world_base.coffee'
-ChecksumCalculator = require './simult_sim/checksum_calculator.coffee'
+ChecksumCalculator = require './checksum_calculator.coffee'
         
 vec2 = (x,y) -> new Box2D.Common.Math.b2Vec2(x,y)
+fixFloat = SimSim.Util.fixFloat
 
-PIover2 = Math.PI/2
+HalfPI = Math.PI/2
 
 # STAGE_WIDTH = window.innerWidth
 # STAGE_HEIGHT = window.innerHeight
@@ -31,7 +31,7 @@ imageAssets = [
 ]
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-class TheWorld extends WorldBase
+class TheWorld extends SimSim.WorldBase
   constructor: () ->
     @checksumCalculator = new ChecksumCalculator()
     @thrust = 0.2
@@ -104,7 +104,6 @@ class TheWorld extends WorldBase
     @data.players[id].controls[action] = value
     turn = window.local.simulation.currentTurnNumber
     sim = window.local.simulation
-    # console.log "##{turn} crc=#{@getChecksum()}"
     
 
   #
@@ -119,7 +118,7 @@ class TheWorld extends WorldBase
       position = body.GetPosition()
       sprite.position.x = position.x * 100
       sprite.position.y = position.y * 100
-      sprite.rotation = body.GetAngle() + PIover2
+      sprite.rotation = body.GetAngle() + HalfPI
 
   applyControls: ->
     for id,player of @data.players
@@ -180,11 +179,11 @@ class TheWorld extends WorldBase
       if obj
         pos = obj.body.GetPosition()
         vel = obj.body.GetLinearVelocity()
-        boxData.x = pos.x.fixed()
-        boxData.y = pos.y.fixed()
-        boxData.angle = obj.body.GetAngle().fixed()
-        boxData.vx = vel.x.fixed()
-        boxData.vy = vel.y.fixed()
+        boxData.x = fixFloat(pos.x)
+        boxData.y = fixFloat(pos.y)
+        boxData.angle = fixFloat(obj.body.GetAngle())
+        boxData.vx = fixFloat(vel.x)
+        boxData.vy = fixFloat(vel.y)
 
         
   makeBoxBody: (boxData) ->
@@ -243,9 +242,10 @@ setupStopWatch = ->
 
 setupSimulation = ->
   url = "http://#{location.hostname}:#{location.port}"
-  simulation = SimSim.create.socketIOSimulation
+  simulation = SimSim.create.socketIOSimulation(
     socketIO: io.connect(url)
     world: new TheWorld()
+  )
   window.local.simulation = simulation
 
 setupStats = ->

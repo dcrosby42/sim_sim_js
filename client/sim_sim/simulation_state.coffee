@@ -1,9 +1,9 @@
-require '../helpers.coffee'
+fixFloat = require('./fix_float.coffee')
 
 class SimulationState
   constructor: (@timePerTurn,
                 @stepsPerTurn,
                 @step) ->
-    @timePerStep = (@timePerTurn / @stepsPerTurn).fixed()
+    @timePerStep = fixFloat(@timePerTurn / @stepsPerTurn)
 
 module.exports = SimulationState

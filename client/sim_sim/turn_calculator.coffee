@@ -1,4 +1,3 @@
-require '../helpers.coffee'
 
 class TurnCalculator
 

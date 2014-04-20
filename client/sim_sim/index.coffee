@@ -1,4 +1,3 @@
-require '../helpers.coffee'
 
 createSimulation = (opts={}) ->
   unless opts.adapter
@@ -57,5 +56,15 @@ createSimulationUsingSocketIO = (opts={}) ->
   opts.adapter = createSocketIOClientAdapter(opts.socketIO)
   createSimulation opts
 
+#######################################################################
+#
+# EXPORTS
+#
+#######################################################################
+
 exports.create =
   socketIOSimulation: createSimulationUsingSocketIO
+
+exports.Util = { fixFloat: require('./fix_float.coffee') }
+
+exports.WorldBase = require('./world_base.coffee')

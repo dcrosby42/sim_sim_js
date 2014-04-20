@@ -21,7 +21,7 @@ module.exports = (grunt) ->
       files: [
         'client/**/*.coffee'
       ]
-      tasks: ['shell:browserify_bumpercats']
+      tasks: ['shell:browserify_sim_sim', 'shell:browserify_bumpercats']
     jasmine_node:
       options:
         forceExit: true
@@ -71,6 +71,11 @@ module.exports = (grunt) ->
           stdout: true
       browserify_pixitest2:
         command: "node_modules/.bin/browserify -t coffeeify client/pixitest2.coffee > public/js/pixitest2.js"
+        options:
+          failOnError: true
+          stdout: true
+      browserify_sim_sim:
+        command: "node_modules/.bin/browserify -t coffeeify client/sim_sim.coffee > public/js/sim_sim.js"
         options:
           failOnError: true
           stdout: true

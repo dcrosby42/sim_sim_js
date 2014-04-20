@@ -1,6 +1,4 @@
-require '../helpers.coffee'
-# EventEmitter = require './event_emitter'
-
+fixFloat = require('./fix_float.coffee')
 
 class Simulation
   constructor: (
@@ -38,7 +36,7 @@ class Simulation
   # Accepts overall elapsed time in floating point seconds
   update: (timeInSeconds) ->
     if @simState
-      elapsedTurnTime = (timeInSeconds - @lastTurnTime).fixed()
+      elapsedTurnTime = fixFloat(timeInSeconds - @lastTurnTime)
       @turnCalculator.stepUntilTurnTime @simState, @world, elapsedTurnTime
 
     @client.update (gameEvent) =>
